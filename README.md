@@ -1,55 +1,73 @@
-# Your startup name here
+# Code Vulnerability Analyzer
 
 [My Notes](notes.md)
 
-A brief description of the application here. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-
-> [!NOTE]
->  This is a template for your startup application. You must modify this `README.md` file for each phase of your development. You only need to fill in the section for each deliverable when that deliverable is submitted in Canvas. Without completing the section for a deliverable, the TA will not know what to look for when grading your submission. Feel free to add additional information to each deliverable description, but make sure you at least have the list of rubric items and a description of what you did for each item.
-
-> [!NOTE]
->  If you are not familiar with Markdown then you should review the [documentation](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax) before continuing.
+A web application that allows users to upload a folder of code (e.g., as a ZIP file), analyzes it using the OpenAI GPT API, and provides insights into potential vulnerabilities and suggestions for improvement. This tool is designed to streamline the process of securing codebases by leveraging the latest AI technologies.
 
 ## 🚀 Specification Deliverable
 
-> [!NOTE]
->  Fill in this sections as the submission artifact for this deliverable. You can refer to this [example](https://github.com/webprogramming260/startup-example/blob/main/README.md) for inspiration.
-
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [ ] Proper use of Markdown
-- [ ] A concise and compelling elevator pitch
-- [ ] Description of key features
-- [ ] Description of how you will use each technology
-- [ ] One or more rough sketches of your application. Images must be embedded in this file using Markdown image references.
+- [x] Proper use of Markdown
+- [x] A concise and compelling elevator pitch
+- [x] Description of key features
+- [x] Description of how you will use each technology
+- [x] One or more rough sketches of your application. Images must be embedded in this file using Markdown image references.
 
 ### Elevator pitch
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+Code Vulnerability Analyzer is a user-friendly web tool that enables developers to proactively identify and resolve security vulnerabilities in their codebases. By uploading a folder containing their code, users receive detailed reports generated using AI, highlighting weaknesses and providing actionable recommendations for improvement. Whether you're working on a small project or a large-scale application, this tool ensures your code meets high-security standards.
 
 ### Design
 
 ![Design image](placeholder.png)
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+Below is a conceptual design of the application's workflow:
+1. Users upload a compressed folder of their code.
+2. The server extracts the contents and processes each file.
+3. The OpenAI GPT API is used to analyze the files for vulnerabilities.
+4. Results are displayed on an interactive dashboard.
 
 ```mermaid
 sequenceDiagram
-    actor You
-    actor Website
-    You->>Website: Replace this with your design
+    actor User
+    actor WebApp
+    User->>WebApp: Upload a ZIP folder
+    WebApp->>Server: Send the folder to the server
+    Server->>GPT_API: Analyze code files
+    GPT_API-->>Server: Return vulnerability analysis
+    Server-->>WebApp: Send results to display
+    WebApp-->>User: Show vulnerability insights and suggestions
 ```
 
 ### Key features
 
-- Describe your key feature
-- Describe your key feature
-- Describe your key feature
+- Secure Upload: Users can upload a compressed folder containing their codebase securely.
+- AI-Powered Analysis: The application integrates with the OpenAI GPT API to analyze the code for common vulnerabilities, such as SQL injection, XSS, and weak encryption.
+- Detailed Reports: Generates actionable suggestions for improving code security.
+- Interactive Dashboard: Allows users to explore vulnerabilities file by file, with severity ratings and improvement tips.
+- Real-Time Feedback: Uses WebSocket to show the progress of analysis as it happens.
 
 ### Technologies
 
 I am going to use the required technologies in the following ways.
+
+HTML:
+Used for structuring the web application's UI, including forms for uploading files and displaying analysis results.
+CSS:
+Ensures the application is visually appealing and provides a responsive design for various devices.
+Includes styling for the dashboard, progress indicators, and vulnerability highlights.
+React:
+Manages the dynamic, component-based front-end for file uploads, real-time analysis progress, and report displays.
+Handles routing for navigation between pages (e.g., upload page, results page).
+Service:
+Integrates the OpenAI GPT API for analyzing code files.
+Uses third-party libraries for handling ZIP file uploads and extraction.
+DB/Login:
+Implements user authentication for secure access to the application.
+Stores user-uploaded files and analysis history in a database for reference.
+WebSocket:
+Provides real-time feedback to users during the analysis process, such as displaying progress and results as they are generated.
 
 - **HTML** - Description here
 - **CSS** - Description here
