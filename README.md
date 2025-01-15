@@ -1,8 +1,8 @@
-# Code Vulnerability Analyzer
+# Free Secure Code
 
 [My Notes](notes.md)
 
-A web application that allows users to upload a folder of code (e.g., as a ZIP file), analyzes it using the OpenAI GPT API, and provides insights into potential vulnerabilities and suggestions for improvement. This tool is designed to streamline the process of securing codebases by leveraging the latest AI technologies.
+This is a web application that allows users to upload a folder of code, analyzes it using the OpenAI GPT API, and provides insights into potential vulnerabilities and suggestions for improvement. This tool is designed to implement simple, fast, and secure code analyisis using the latest AI technologies.
 
 ## 🚀 Specification Deliverable
 
@@ -16,17 +16,17 @@ For this deliverable I did the following. I checked the box `[x]` and added a de
 
 ### Elevator pitch
 
-Code Vulnerability Analyzer is a user-friendly web tool that enables developers to proactively identify and resolve security vulnerabilities in their codebases. By uploading a folder containing their code, users receive detailed reports generated using AI, highlighting weaknesses and providing actionable recommendations for improvement. Whether you're working on a small project or a large-scale application, this tool ensures your code meets high-security standards.
+Have you ever wanted to know if your code is secure? Code Vulnerability Analyzer is a simple web tool that enables developers to identify and resolve security vulnerabilities in a matter of seconds. By uploading a folder containing your code, you can receive detailed AI reports, highlighting weaknesses and providing some recommendations for improvement. Whether you're working on a small project or a large-scale application, this tool ensures your code meets high-security standards.
 
 ### Design
 
 ![Design image](placeholder.png)
 
-Below is a conceptual design of the application's workflow:
+Here is a conceptual design of the workflow:
 1. Users upload a compressed folder of their code.
-2. The server extracts the contents and processes each file.
+2. The server extracts its contents and processes each file.
 3. The OpenAI GPT API is used to analyze the files for vulnerabilities.
-4. Results are displayed on an interactive dashboard.
+4. Results are displayed on a dashboard.
 
 ```mermaid
 sequenceDiagram
@@ -45,36 +45,21 @@ sequenceDiagram
 - Secure Upload: Users can upload a compressed folder containing their codebase securely.
 - AI-Powered Analysis: The application integrates with the OpenAI GPT API to analyze the code for common vulnerabilities, such as SQL injection, XSS, and weak encryption.
 - Detailed Reports: Generates actionable suggestions for improving code security.
-- Interactive Dashboard: Allows users to explore vulnerabilities file by file, with severity ratings and improvement tips.
+- Dashboard: Allows users to explore vulnerabilities file by file, with severity ratings and improvement tips.
 - Real-Time Feedback: Uses WebSocket to show the progress of analysis as it happens.
 
 ### Technologies
 
 I am going to use the required technologies in the following ways.
 
-HTML:
-Used for structuring the web application's UI, including forms for uploading files and displaying analysis results.
-CSS:
-Ensures the application is visually appealing and provides a responsive design for various devices.
-Includes styling for the dashboard, progress indicators, and vulnerability highlights.
-React:
-Manages the dynamic, component-based front-end for file uploads, real-time analysis progress, and report displays.
-Handles routing for navigation between pages (e.g., upload page, results page).
-Service:
-Integrates the OpenAI GPT API for analyzing code files.
+- **HTML** - Uses correct HTML structure for application. Two HTML pages. One for login and one for the code analyzer dashboard.
+- **CSS** - Application styling that looks good on different screen sizes, uses good whitespace, color choice and contrast.
+- **React** - Provides login, file uploads, real-time analysis progress, and report displays.
+- **Service** - Integrates the OpenAI GPT API for analyzing code files.
 Uses third-party libraries for handling ZIP file uploads and extraction.
-DB/Login:
-Implements user authentication for secure access to the application.
+- **DB/Login** - Implements user authentication for secure access to the application.
 Stores user-uploaded files and analysis history in a database for reference.
-WebSocket:
-Provides real-time feedback to users during the analysis process, such as displaying progress and results as they are generated.
-
-- **HTML** - Description here
-- **CSS** - Description here
-- **React** - Description here
-- **Service** - Description here
-- **DB/Login** - Description here
-- **WebSocket** - Description here
+- **WebSocket** - Provides real-time feedback to users during the analysis process, such as displaying progress and results as they are generated.
 
 ## 🚀 AWS deliverable
 
