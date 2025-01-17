@@ -20,7 +20,7 @@ Have you ever wanted to know if your code is secure? Code Vulnerability Analyzer
 
 ### Design
 
-![Design image](placeholder.png)
+![Design image](design.png)
 
 Here is a conceptual design of the workflow:
 1. Users upload a compressed folder of their code.
