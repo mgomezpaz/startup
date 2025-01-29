@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Secure Code</title>
+    <link rel="icon" href="favicon.ico" />
+  </head>
+  <body>
+    <header>
+      <h1>Free Secure Code</h1>
+
+      <nav>
+        <menu>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="analyzer.html">Analyzer</a></li>
+          <li><a href="history.html">History</a></li>
+          <li><a href="about.html">About</a></li>
+        </menu>
+      </nav>
+
+      <hr />
+    </header>
+
+    <main>
+      <div class="user">
+        User: <span class="user-name">Mystery user</span>
+      </div>
+
+      <br />
+
+      <div>
+        <label for="zip-file">ZIP File</label>
+        <input type="file" id="zip-file" accept=".zip" />
+      </div>
+
+      <br />
+
+      <div>
+        <label for="repo-url">GitHub URL</label>
+        <input type="url" 
+               id="repo-url" 
+               placeholder="https://github.com/user/repo"
+               pattern="https://github\.com/[a-zA-Z0-9-]+/[a-zA-Z0-9-_.]+"
+               title="Please enter a valid GitHub repository URL (e.g., https://github.com/username/repository)"
+               required />
+      </div>
+
+      <br />
+
+      <div>
+        <button>Analyze Code</button>
+      </div>
+
+      <br />
+
+      <div>
+        <label for="notes">Notes</label>
+        <textarea id="notes" rows="3"></textarea>
+      </div>
+
+      <br />
+
+      <div class="notification">
+        <li>Analysis started for project1.zip</li>
+        <li>Analysis completed for test_code.zip</li>
+      </div>
+
+      <div class="analysis">
+        <h2>Results</h2>
+        <p>Upload your code to start the analysis...</p>
+      </div>
+    </main>
+
+    <footer>
+      <hr />
+      <span>Author: Matias Gomez Paz</span>
+      <br />
+      <a href="https://github.com/mgomezpaz/startup">GitHub</a>
+    </footer>
+  </body>
+</html> 
