@@ -75,11 +75,11 @@ For this deliverable I did the following. I checked the box `[x]` and added a de
 - [X] **Proper HTML element usage**
 - [X] **Links**
 - [X] **Text**
-- [ ] **3rd party API placeholder** - I did not complete this part of the deliverable.
-- [ ] **Images** - I did not complete this part of the deliverable.
-- [ ] **Login placeholder** - I did not complete this part of the deliverable.
-- [ ] **DB data placeholder** - I did not complete this part of the deliverable.
-- [ ] **WebSocket placeholder** - I did not complete this part of the deliverable.
+- [X] **3rd party API placeholder**
+- [X] **Images**
+- [X] **Login placeholder**
+- [X] **DB data placeholder**
+- [X] **WebSocket placeholder**
 
 ## 🚀 CSS deliverable
 
