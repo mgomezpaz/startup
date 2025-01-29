@@ -10,3 +10,4 @@
 .env.test.local
 .env.staging.local
 simon-html/
+cs260startup.pem
