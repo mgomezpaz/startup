@@ -1,4 +1,5 @@
-.pem
+*.pem
+*.sh
 .env
 .env.local
 .env.development
@@ -11,4 +12,4 @@
 .env.staging.local
 simon-html/
 cs260startup.pem
-.sh
+simon-css/
