@@ -2,6 +2,7 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 375px;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
 header {
@@ -16,60 +17,105 @@ main {
   justify-content: center;
 }
 
-footer {
-  flex: 0 30px;
-}
-
 menu {
   flex: 1;
   display: flex;
   flex-direction: row !important;
   list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.navbar-brand {
-  padding-left: 0.3em;
-  border-bottom: solid rgb(182, 182, 182) thin;
+.header-content {
+  display: flex;
+  align-items: center;
+  padding: .5em;
 }
 
-menu .nav-item {
-  padding: 0 0.3em;
+.header-content img {
+  width: 40px;
+  height: 40px;
+  margin-left: 5px;
 }
 
-footer a {
-  float: right;
+.header-content h1 {
+  margin: 0;
+  font-size: 1.5em;
 }
 
-main div {
+menu .nav-item { padding: 0 1em; }
+
+.nav-link {
+  color: #353740;
+  text-decoration: none;
+}
+
+.nav-link:hover, .nav-link.active { color: #10a37f; }
+
+#login {
+  width: 400px;
+  padding: 2em;
+}
+
+#login h2 {
+  color: #202123;
+  font-size: 32px;
+  margin-bottom: 1.5em;
+  text-align: center;
+}
+
+.input-group {
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  margin-bottom: 1em;
+  background: #f9f9f9;
+}
+
+.input-group:focus-within {
+  border-color: #10a37f;
+  background: #fff;
+}
+
+.form-control {
+  border: 0;
   padding: 1em;
-  margin-bottom: 1em;
   width: 100%;
-  max-width: 400px;
+  background: transparent;
 }
 
-input {
-  display: block;
+.btn-primary {
+  background: #4285f4;
+  color: #fff;
+  border: 0;
   width: 100%;
-  padding: 0.5em;
-  margin-bottom: 1em;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: #f8f9fa;
+  padding: .9em;
+  margin-bottom: .8em;
+  border-radius: 8px;
 }
 
-button {
+.btn-secondary {
+  background: #8e8ea0;
+  color: #fff;
+  border: 0;
   width: 100%;
-  margin-bottom: 0.5em;
+  padding: .9em;
+  border-radius: 8px;
+}
+
+footer {
+  text-align: center;
+  padding: 1em;
+  color: #6e6e80;
 }
 
 @media (max-height: 600px) {
-  header {
-    display: none;
-  }
-  footer {
-    display: none;
-  }
-  main {
-    flex: 1 100vh;
+  header, footer { display: none; }
+  main { flex: 1 100vh; }
+}
+
+@media (max-width: 500px) {
+  #login {
+    width: 90%;
+    padding: 1.5em;
   }
 } 

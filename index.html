@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Free Secure Code</title>
     <link rel="icon" href="logo.ico" />
+
+    <!-- Include your custom CSS -->
     <link rel="stylesheet" href="main.css" />
+
+    <!-- Include bootstrap CSS framework -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -13,11 +17,15 @@
       crossorigin="anonymous"
     />
   </head>
-  <body class="bg-light">
-    <header class="container-fluid">
-      <nav class="navbar fixed-top navbar-light">
-        <a class="navbar-brand" href="#">Free Secure Code</a>
-        <menu class="navbar-nav">
+  <body>
+    <header>
+      <div class="header-content">
+        <img src="logo.ico" alt="Secure Code Logo" width="40" height="40" />
+        <h1>Free Secure Code</h1>
+      </div>
+
+      <nav>
+        <menu>
           <li class="nav-item">
             <a class="nav-link active" href="index.html">Home</a>
           </li>
@@ -33,24 +41,28 @@
         </menu>
       </nav>
     </header>
-
-    <main class="container-fluid text-center">
-      <div>
-        <h1>Log In</h1>
+    
+    <main>
+      <section id="login">
+        <h2>Log In</h2>
         <form method="get" action="analyzer.html">
-          <input type="text" placeholder="your@email.com" />
-          <input type="password" placeholder="password" />
+          <div class="input-group mb-3">
+            <input type="email" class="form-control" id="email" placeholder="your@email.com" required />
+          </div>
+          <div class="input-group mb-3">
+            <input type="password" class="form-control" id="password" placeholder="password" required />
+          </div>
           <button type="submit" class="btn btn-primary">Log In</button>
-          <button type="submit" class="btn btn-secondary">Create</button>
+          <button type="button" class="btn btn-secondary">Create Account</button>
         </form>
-      </div>
+      </section>
     </main>
 
-    <footer class="bg-light text-dark-50">
-      <div class="container-fluid">
-        <span class="text-reset">Author: Matias Gomez Paz</span>
-        <a class="text-reset" href="https://github.com/mgomezpaz/startup">Source</a>
-      </div>
+    <footer>
+      <hr />
+      <span>Author: Matias Gomez Paz</span>
+      <br />
+      <a href="https://github.com/mgomezpaz/startup">GitHub</a>
     </footer>
   </body>
 </html> 
