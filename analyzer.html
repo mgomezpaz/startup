@@ -5,69 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Secure Code</title>
     <link rel="icon" href="logo.ico" />
+    <link rel="stylesheet" href="main.css" />
+    <link rel="stylesheet" href="analyzer.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   </head>
   <body>
     <header>
       <div class="header-content">
-        <img src="logo.ico" alt="Secure Code Logo" width="30" height="30" />
+        <img src="logo.ico" alt="Secure Code Logo" width="40" height="40" />
         <h1>Free Secure Code</h1>
+        <div class="user">User: <span class="user-name">Mystery user</span></div>
       </div>
 
       <nav>
         <menu>
-          <li><a href="index.html">Home</a></li>
-          <li><a href="analyzer.html">Analyzer</a></li>
-          <li><a href="history.html">History</a></li>
-          <li><a href="about.html">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+          <li class="nav-item"><a class="nav-link active" href="analyzer.html">Analyzer</a></li>
+          <li class="nav-item"><a class="nav-link" href="history.html">History</a></li>
+          <li class="nav-item"><a class="nav-link" href="about.html">About</a></li>
         </menu>
       </nav>
-
-      <hr />
     </header>
 
     <main>
-      <div class="user">
-        User: <span class="user-name">Mystery user</span>
+      <div class="prompt-box">
+        <h2>What do we need to secure?</h2>
+        <div class="upload-option">
+          <label for="zip-file">ZIP File</label>
+          <input type="file" id="zip-file" accept=".zip" class="form-control" />
+        </div>
+
+        <div class="upload-option">
+          <label for="repo-url">GitHub URL</label>
+          <input type="url" id="repo-url" class="form-control" placeholder="https://github.com/user/repo" />
+        </div>
+
+        <div>
+          <label for="notes">Give some insights about the code</label>
+          <textarea id="notes" class="form-control" rows="3"></textarea>
+        </div>
+
+        <div class="upload-option">
+          <button class="btn btn-primary">Analyze Code</button>
+        </div>
       </div>
 
-      <br />
-
-      <div>
-        <label for="zip-file">ZIP File</label>
-        <input type="file" id="zip-file" accept=".zip" />
-      </div>
-
-      <br />
-
-      <div>
-        <label for="repo-url">GitHub URL</label>
-        <input type="url" 
-               id="repo-url" 
-               placeholder="https://github.com/user/repo"
-               pattern="https://github\.com/[a-zA-Z0-9-]+/[a-zA-Z0-9-_.]+"
-               title="Please enter a valid GitHub repository URL (e.g., https://github.com/username/repository)"
-               required />
-      </div>
-
-      <br />
-
-      <div>
-        <button>Analyze Code</button>
-      </div>
-
-      <br />
-
-      <div>
-        <label for="notes">Notes</label>
-        <textarea id="notes" rows="3"></textarea>
-      </div>
-
-      <br />
-
-      <div class="notification">
+      <ul class="notification">
         <li>Analysis started for project1.zip</li>
         <li>Analysis completed for test_code.zip</li>
-      </div>
+      </ul>
 
       <div class="analysis">
         <h2>Results</h2>
