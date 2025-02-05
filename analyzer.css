@@ -1,0 +1,70 @@
+main {
+  width: 100%;
+  max-width: 800px;
+  margin: 40px auto;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+}
+
+.user {
+  margin-left: auto;
+  padding: 8px;
+}
+
+.user-name { color: #10a37f }
+
+.prompt-box h2 {
+  margin: 0 0 24px;
+  font-size: 24px;
+}
+
+.prompt-box, .analysis {
+  background: #f9f9f9;
+  padding: 24px;
+  margin: 32px auto;
+  border-radius: 8px;
+  width: calc(100% - 40px);
+}
+
+.form-control {
+  margin-top: 8px;
+}
+
+.form-control:focus {
+  border-color: #10a37f;
+  box-shadow: none;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: #4285f4;
+  border: 0;
+  border-radius: 8px;
+}
+
+.notification {
+  list-style: none;
+  padding: 0;
+  margin: 8px 20px;
+  width: calc(100% - 85px);
+}
+
+.notification li {
+  color: #6e6e80;
+  margin: 4px 0;
+}
+
+#notes {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.upload-option { margin: 24px 0 }
+
+.prompt-box .upload-option:last-child {
+  margin-bottom: 0;
+} 
