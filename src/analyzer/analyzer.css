@@ -1,0 +1,386 @@
+main {
+  width: 100%;
+  max-width: 800px;
+  margin: 40px auto;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+}
+
+.user {
+  margin-left: auto;
+  padding: 8px;
+}
+
+.user-name { color: #10a37f }
+
+.prompt-box h2 {
+  margin: 0 0 24px;
+  font-size: 24px;
+}
+
+.prompt-box, .analysis {
+  background: #f9f9f9;
+  padding: 24px;
+  margin: 32px auto;
+  border-radius: 8px;
+  width: calc(100% - 40px);
+}
+
+.form-control {
+  margin-top: 8px;
+}
+
+.form-control:focus {
+  border-color: #10a37f;
+  box-shadow: none;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: #4285f4;
+  border: 0;
+  border-radius: 8px;
+}
+
+.notification {
+  list-style: none;
+  padding: 0;
+  margin: 8px 20px;
+  width: calc(100% - 85px);
+}
+
+.notification li {
+  color: #6e6e80;
+  margin: 4px 0;
+}
+
+#notes {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.upload-option { margin: 24px 0 }
+
+.prompt-box .upload-option:last-child {
+  margin-bottom: 0;
+}
+
+.analyzer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.prompt-box,
+.notifications,
+.analysis-results {
+  background: #f9f9f9;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.prompt-box h2,
+.notifications h3,
+.analysis-results h2 {
+  margin: 0 0 1.5rem;
+  color: #2c3e50;
+  font-size: 24px;
+}
+
+.upload-option {
+  margin-bottom: 1.5rem;
+}
+
+.upload-option:last-child {
+  margin-bottom: 0;
+}
+
+.upload-option label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+}
+
+.form-control:focus {
+  border-color: #4285f4;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+}
+
+.progress {
+  height: 6px;
+  margin-top: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #4285f4;
+  transition: width 0.2s;
+}
+
+.notifications {
+  background: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.notifications h3 {
+  margin: 0 0 1rem;
+  font-size: 20px;
+  color: #2c3e50;
+}
+
+.notification-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notification-list li {
+  padding: 12px;
+  border-bottom: 1px solid #dee2e6;
+  color: #495057;
+  display: flex;
+  align-items: center;
+}
+
+.notification-list li:last-child {
+  border: none;
+}
+
+.timestamp {
+  color: #6c757d;
+  font-family: monospace;
+  font-size: 14px;
+  margin-right: 12px;
+}
+
+.analysis-results {
+  background: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.analysis-results h2 {
+  margin: 0 0 1.5rem;
+  font-size: 24px;
+  color: #2c3e50;
+}
+
+.summary-box {
+  background: white;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.summary-box h3 {
+  margin: 0 0 1rem;
+  font-size: 20px;
+  color: #2c3e50;
+}
+
+.severity-counts {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.severity {
+  text-align: center;
+  padding: 1rem;
+  border-radius: 8px;
+  min-width: 100px;
+}
+
+.severity.high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.severity.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.severity.low {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.severity .count {
+  display: block;
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.severity .label {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vulnerabilities {
+  margin-top: 2rem;
+}
+
+.vulnerabilities h3 {
+  margin: 0 0 1rem;
+  font-size: 20px;
+  color: #2c3e50;
+}
+
+.vulnerability-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.vulnerability-card.high {
+  border-left: 4px solid #dc2626;
+}
+
+.vulnerability-card.medium {
+  border-left: 4px solid #d97706;
+}
+
+.vulnerability-card.low {
+  border-left: 4px solid #059669;
+}
+
+.vulnerability-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.severity-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.vulnerability-card.high .severity-badge {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.vulnerability-card.medium .severity-badge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.vulnerability-card.low .severity-badge {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.file-location {
+  font-family: monospace;
+  color: #6b7280;
+}
+
+.description {
+  margin-bottom: 1rem;
+  color: #374151;
+}
+
+.code-snippet {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.code-snippet code {
+  font-family: monospace;
+  color: #1f2937;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #3367d6;
+}
+
+.btn:disabled {
+  background: #9aa0a6;
+  cursor: not-allowed;
+}
+
+.alert {
+  margin: 1rem 0;
+  padding: 12px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.alert-danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .analyzer-container {
+    padding: 1rem;
+  }
+
+  .prompt-box,
+  .notifications,
+  .analysis-results {
+    padding: 1rem;
+  }
+
+  .severity-counts {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .severity {
+    min-width: auto;
+  }
+
+  .vulnerability-card {
+    padding: 1rem;
+  }
+} 
