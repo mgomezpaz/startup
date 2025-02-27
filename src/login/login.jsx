@@ -1,11 +1,13 @@
 import React from 'react';
 import { AuthState } from './authState';
+import { useNavigate } from 'react-router-dom';
 import './login.css';
 
 export function Login({ userName, authState, onAuthChange }) {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [displayError, setDisplayError] = React.useState(null);
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -24,6 +26,9 @@ export function Login({ userName, authState, onAuthChange }) {
       onAuthChange(email, AuthState.Authenticated);
       
       setDisplayError(null);
+      
+      // Redirect to analyzer page
+      navigate('/analyzer');
     } catch (error) {
       setDisplayError('Failed to login. Please try again.');
     }
