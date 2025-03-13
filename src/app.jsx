@@ -10,11 +10,42 @@ import { Analyzer } from './analyzer/analyzer';
 import { AuthState } from './login/authState';
 
 export default function App() {
-    const [userName, setUserName] = React.useState(localStorage.getItem('userName') || '');
-    const [authState, setAuthState] = React.useState(userName ? AuthState.Authenticated : AuthState.Unauthenticated);
+    const [userName, setUserName] = React.useState('');
+    const [authState, setAuthState] = React.useState(AuthState.Unknown);
+
+    // Check for authentication when the app loads
+    React.useEffect(() => {
+        // If we're already authenticated, there's nothing to do
+        if (authState !== AuthState.Unknown) {
+            return;
+        }
+
+        // Try to get the user from the backend
+        fetch('/api/auth/me', {
+            method: 'GET',
+        })
+            .then((response) => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Not authenticated');
+            })
+            .then((user) => {
+                setUserName(user.email);
+                setAuthState(AuthState.Authenticated);
+            })
+            .catch(() => {
+                setUserName('');
+                setAuthState(AuthState.Unauthenticated);
+            });
+    }, [authState]);
 
     // Protected route wrapper
     const ProtectedRoute = ({ children }) => {
+        if (authState === AuthState.Unknown) {
+            return <div>Loading...</div>;
+        }
+        
         if (authState !== AuthState.Authenticated) {
             return <Navigate to="/" replace />;
         }
