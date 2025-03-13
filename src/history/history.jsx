@@ -5,75 +5,32 @@ export function History({ userName }) {
   const [analysisHistory, setAnalysisHistory] = React.useState([]);
   const [selectedAnalysis, setSelectedAnalysis] = React.useState(null);
   const [sortConfig, setSortConfig] = React.useState({ key: 'date', direction: 'desc' });
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
 
-  // Mock data - this would normally come from your backend
+  // Fetch analysis history from the backend
   React.useEffect(() => {
-    const mockHistory = [
-      {
-        id: 1,
-        projectName: 'project1.zip',
-        date: '2024-03-15T10:30:00',
-        vulnerabilities: {
-          high: 2,
-          medium: 1,
-          low: 0
-        },
-        results: {
-          vulnerabilities: [
-            {
-              file: 'src/main.js',
-              line: 42,
-              severity: 'high',
-              description: 'Potential SQL injection vulnerability detected',
-              code: 'const query = `SELECT * FROM users WHERE id = ${userId}`;'
-            },
-            {
-              file: 'src/auth.js',
-              line: 15,
-              severity: 'high',
-              description: 'Weak password hashing algorithm',
-              code: 'const hash = md5(password);'
-            }
-          ]
+    const fetchHistory = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/history');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch history');
         }
-      },
-      {
-        id: 2,
-        projectName: 'test_code.zip',
-        date: '2024-03-14T15:45:00',
-        vulnerabilities: {
-          high: 0,
-          medium: 0,
-          low: 0
-        },
-        results: {
-          vulnerabilities: []
-        }
-      },
-      {
-        id: 3,
-        projectName: 'backend_src.zip',
-        date: '2024-03-10T09:20:00',
-        vulnerabilities: {
-          high: 2,
-          medium: 2,
-          low: 1
-        },
-        results: {
-          vulnerabilities: [
-            {
-              file: 'api/users.js',
-              line: 28,
-              severity: 'high',
-              description: 'Unvalidated file upload',
-              code: 'await fs.writeFile(path.join("/uploads", filename), data);'
-            }
-          ]
-        }
+        
+        const data = await response.json();
+        setAnalysisHistory(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching history:', err);
+        setError('Failed to load analysis history. Please try again later.');
+      } finally {
+        setLoading(false);
       }
-    ];
+    };
 
-    setAnalysisHistory(mockHistory);
+    fetchHistory();
   }, []);
 
   const handleSort = (key) => {
@@ -87,6 +44,8 @@ export function History({ userName }) {
   };
 
   const sortedHistory = React.useMemo(() => {
+    if (!analysisHistory.length) return [];
+    
     const sorted = [...analysisHistory];
     sorted.sort((a, b) => {
       if (sortConfig.key === 'vulnerabilities') {
@@ -129,6 +88,23 @@ export function History({ userName }) {
     return 'none';
   };
 
+  // Fetch a specific analysis by ID
+  const fetchAnalysisDetails = async (id) => {
+    try {
+      const response = await fetch(`/api/analysis/${id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch analysis details');
+      }
+      
+      const data = await response.json();
+      setSelectedAnalysis(data);
+    } catch (err) {
+      console.error('Error fetching analysis details:', err);
+      setError('Failed to load analysis details. Please try again later.');
+    }
+  };
+
   return (
     <main className="history-container">
       <div className="history-header">
@@ -136,73 +112,87 @@ export function History({ userName }) {
       </div>
 
       <div className="history-content">
-        <div className="table-responsive">
-          <table className="history-table">
-            <thead>
-              <tr>
-                <th style={{width: '5%'}} onClick={() => handleSort('id')}>#</th>
-                <th style={{width: '30%'}} onClick={() => handleSort('projectName')}>
-                  Project Name
-                  {sortConfig.key === 'projectName' && (
-                    <span className="sort-indicator">
-                      {sortConfig.direction === 'asc' ? ' ↑' : ' ↓'}
-                    </span>
-                  )}
-                </th>
-                <th style={{width: '25%'}} onClick={() => handleSort('date')}>
-                  Date
-                  {sortConfig.key === 'date' && (
-                    <span className="sort-indicator">
-                      {sortConfig.direction === 'asc' ? ' ↑' : ' ↓'}
-                    </span>
-                  )}
-                </th>
-                <th style={{width: '25%'}} onClick={() => handleSort('vulnerabilities')}>
-                  Vulnerabilities
-                  {sortConfig.key === 'vulnerabilities' && (
-                    <span className="sort-indicator">
-                      {sortConfig.direction === 'asc' ? ' ↑' : ' ↓'}
-                    </span>
-                  )}
-                </th>
-                <th style={{width: '15%'}}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedHistory.map((analysis) => (
-                <tr key={analysis.id}>
-                  <td>{analysis.id}</td>
-                  <td>{analysis.projectName}</td>
-                  <td>{formatDate(analysis.date)}</td>
-                  <td className={`vulnerabilities ${getSeverityClass(analysis.vulnerabilities)}`}>
-                    <div className="vulnerability-summary">
-                      {getTotalVulnerabilities(analysis.vulnerabilities)}
-                      <span className="vulnerability-breakdown">
-                        {analysis.vulnerabilities.high > 0 && (
-                          <span className="high">{analysis.vulnerabilities.high}H</span>
-                        )}
-                        {analysis.vulnerabilities.medium > 0 && (
-                          <span className="medium">{analysis.vulnerabilities.medium}M</span>
-                        )}
-                        {analysis.vulnerabilities.low > 0 && (
-                          <span className="low">{analysis.vulnerabilities.low}L</span>
-                        )}
+        {loading ? (
+          <div className="loading">Loading analysis history...</div>
+        ) : error ? (
+          <div className="error">{error}</div>
+        ) : analysisHistory.length === 0 ? (
+          <div className="no-history">No analysis history found. Try analyzing some code first!</div>
+        ) : (
+          <div className="table-responsive">
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th style={{width: '5%'}} onClick={() => handleSort('id')}>#</th>
+                  <th style={{width: '30%'}} onClick={() => handleSort('projectName')}>
+                    Project Name
+                    {sortConfig.key === 'projectName' && (
+                      <span className="sort-indicator">
+                        {sortConfig.direction === 'asc' ? ' ↑' : ' ↓'}
                       </span>
-                    </div>
-                  </td>
-                  <td>
-                    <button 
-                      className="btn btn-sm btn-primary"
-                      onClick={() => setSelectedAnalysis(analysis)}
-                    >
-                      View Details
-                    </button>
-                  </td>
+                    )}
+                  </th>
+                  <th style={{width: '25%'}} onClick={() => handleSort('date')}>
+                    Date
+                    {sortConfig.key === 'date' && (
+                      <span className="sort-indicator">
+                        {sortConfig.direction === 'asc' ? ' ↑' : ' ↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th style={{width: '25%'}} onClick={() => handleSort('vulnerabilities')}>
+                    Vulnerabilities
+                    {sortConfig.key === 'vulnerabilities' && (
+                      <span className="sort-indicator">
+                        {sortConfig.direction === 'asc' ? ' ↑' : ' ↓'}
+                      </span>
+                    )}
+                  </th>
+                  <th style={{width: '15%'}}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {sortedHistory.map((analysis, index) => (
+                  <tr key={analysis._id || index}>
+                    <td>{index + 1}</td>
+                    <td>{analysis.projectName}</td>
+                    <td>{formatDate(analysis.date)}</td>
+                    <td className={`vulnerabilities ${getSeverityClass(analysis.vulnerabilities)}`}>
+                      <div className="vulnerability-summary">
+                        {getTotalVulnerabilities(analysis.vulnerabilities)}
+                        <span className="vulnerability-breakdown">
+                          {analysis.vulnerabilities.high > 0 && (
+                            <span className="high">{analysis.vulnerabilities.high}H</span>
+                          )}
+                          {analysis.vulnerabilities.medium > 0 && (
+                            <span className="medium">{analysis.vulnerabilities.medium}M</span>
+                          )}
+                          {analysis.vulnerabilities.low > 0 && (
+                            <span className="low">{analysis.vulnerabilities.low}L</span>
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <button 
+                        className="btn btn-sm btn-primary"
+                        onClick={() => {
+                          if (analysis._id) {
+                            fetchAnalysisDetails(analysis._id);
+                          } else {
+                            setSelectedAnalysis(analysis);
+                          }
+                        }}
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {selectedAnalysis && (
           <div className="analysis-details">
