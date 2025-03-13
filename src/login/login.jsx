@@ -11,32 +11,71 @@ export function Login({ userName, authState, onAuthChange }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    // For now, we'll just do basic validation
+    // Basic validation
     if (!email || !password) {
       setDisplayError('Please fill in all fields');
       return;
     }
 
-    // Mock authentication - in the future, this will call your backend
     try {
-      // Store in localStorage
-      localStorage.setItem('userName', email);
-      
-      // Update auth state
-      onAuthChange(email, AuthState.Authenticated);
-      
-      setDisplayError(null);
-      
-      // Redirect to analyzer page
-      navigate('/analyzer');
+      // Call the backend service for authentication
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (response.ok) {
+        const user = await response.json();
+        // Update auth state
+        onAuthChange(user.email, AuthState.Authenticated);
+        setDisplayError(null);
+        
+        // Redirect to analyzer page
+        navigate('/analyzer');
+      } else {
+        const body = await response.json();
+        setDisplayError(body.msg || 'Authentication failed');
+      }
     } catch (error) {
       setDisplayError('Failed to login. Please try again.');
     }
   };
 
   const handleCreateAccount = async () => {
-    // For now, we'll use the same logic as login
-    handleLogin(new Event('submit'));
+    // Basic validation
+    if (!email || !password) {
+      setDisplayError('Please fill in all fields');
+      return;
+    }
+
+    try {
+      // Call the backend service to create a new account
+      const response = await fetch('/api/auth/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (response.ok) {
+        const user = await response.json();
+        // Update auth state
+        onAuthChange(user.email, AuthState.Authenticated);
+        setDisplayError(null);
+        
+        // Redirect to analyzer page
+        navigate('/analyzer');
+      } else {
+        const body = await response.json();
+        setDisplayError(body.msg || 'Failed to create account');
+      }
+    } catch (error) {
+      setDisplayError('Failed to create account. Please try again.');
+    }
   };
 
   return (
@@ -48,9 +87,18 @@ export function Login({ userName, authState, onAuthChange }) {
             <p>Welcome back, {userName}!</p>
             <button 
               className="btn btn-secondary"
-              onClick={() => {
-                localStorage.removeItem('userName');
-                onAuthChange('', AuthState.Unauthenticated);
+              onClick={async () => {
+                try {
+                  // Call the backend service to logout
+                  await fetch('/api/auth/logout', {
+                    method: 'DELETE',
+                  });
+                } catch (error) {
+                  // If there's an error, we still want to log out locally
+                  console.error('Error during logout:', error);
+                } finally {
+                  onAuthChange('', AuthState.Unauthenticated);
+                }
               }}
             >
               Logout
