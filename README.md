@@ -104,8 +104,9 @@ For this deliverable I did the following. I checked the box `[x]` and added a de
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [X] **All functionality implemented or mocked out** 
-- [X] **Hooks** 
+- [X] **All functionality implemented or mocked out** - Got all the core features working! The analyzer now shows a cool progress bar when "uploading" files, displays vulnerability results with colored severity indicators, and lets users see details about potential security issues. It's pretty satisfying to see it all come together.
+
+- [X] **Hooks** - Used React hooks all over the place. useState keeps track of things like file uploads and analysis results, useEffect helps load saved data when the page opens, and useMemo makes the history sorting super fast.
 
 ## 🚀 Service deliverable
 
