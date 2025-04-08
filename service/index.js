@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const bcrypt = require('bcryptjs');
@@ -199,10 +201,14 @@ apiRouter.get('/analyses', verifyAuth, async (req, res) => {
 });
 
 // Set up OpenAI for our code analysis
-// Make sure to add your API key in production!
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'your-api-key-here',
+  apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Validate OpenAI configuration
+if (!process.env.OPENAI_API_KEY) {
+  console.warn('WARNING: OPENAI_API_KEY environment variable not set. Code analysis features will not work.');
+}
 
 // Main function to analyze code using OpenAI's API
 async function analyzeCodeWithAI(code) {
