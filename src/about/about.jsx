@@ -2,10 +2,37 @@ import React from 'react';
 import './about.css';
 
 export function About() {
+  const [imageUrl, setImageUrl] = React.useState('');
+  const [quote, setQuote] = React.useState('Loading...');
+  const [quoteAuthor, setQuoteAuthor] = React.useState('unknown');
+
+  React.useEffect(() => {
+    setImageUrl('placeholder.jpg');
+  
+    const securityQuotes = [
+      { 
+        text: "There's no silver bullet with cybersecurity; a layered defense is the only viable option.",
+        author: "James Scott"
+      },
+      { 
+        text: "Security isn't something you buy, it's something you do.",
+        author: "Bruce Schneier"
+      },
+      { 
+        text: "The only truly secure system is one that is powered off, cast in a block of concrete and sealed in a lead-lined room.",
+        author: "Gene Spafford"
+      }
+    ];
+    
+    const randomQuote = securityQuotes[Math.floor(Math.random() * securityQuotes.length)];
+    setQuote(randomQuote.text);
+    setQuoteAuthor(randomQuote.author);
+  }, []);
+
   return (
     <main>
       <div id="picture" className="picture-box">
-        <img src="placeholder.jpg" alt="AI Code Analysis" />
+        <img src={imageUrl} alt="AI Code Analysis" />
       </div>
 
       <p>
@@ -20,8 +47,8 @@ export function About() {
       </p>
 
       <div id="quote">
-        <div>"There's no silver bullet with cybersecurity; a layered defense is the only viable option."</div>
-        <div>James Scott</div>
+        <div>{quote}</div>
+        <div>{quoteAuthor}</div>
       </div>
     </main>
   );
