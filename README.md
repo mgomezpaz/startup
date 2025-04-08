@@ -127,11 +127,11 @@ For this deliverable I did the following. I checked the box `[x]` and added a de
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [ ] **Node.js/Express HTTP service** - I did not complete this part of the deliverable.
-- [ ] **Static middleware for frontend** - I did not complete this part of the deliverable.
-- [ ] **Calls to third party endpoints** - I did not complete this part of the deliverable.
-- [ ] **Backend service endpoints** - I did not complete this part of the deliverable.
-- [ ] **Frontend calls service endpoints** - I did not complete this part of the deliverable.
+- [x] **Node.js/Express HTTP service** - Created a backend service using Express that provides authentication and code analysis endpoints.
+- [x] **Static middleware for frontend** - Added Express static middleware to serve the frontend files from the public directory.
+- [x] **Calls to third party endpoints** - Implemented a security news endpoint that fetches data from the HackerNews API.
+- [x] **Backend service endpoints** - Created endpoints for user authentication (register, login, logout) and code analysis (submit code, get analysis, get user analyses).
+- [x] **Frontend calls service endpoints** - Frontend components make fetch requests to the service endpoints for authentication and code analysis.
 
 ## 🚀 DB/Login deliverable
 

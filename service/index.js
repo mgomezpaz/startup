@@ -2,6 +2,8 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const bcrypt = require('bcryptjs');
 const uuid = require('uuid');
+const fetch = require('node-fetch');
+const { OpenAI } = require('openai');
 
 const app = express();
 
@@ -189,6 +191,87 @@ apiRouter.get('/analyses', verifyAuth, async (req, res) => {
     }));
   
   res.send({ analyses: userAnalyses });
+});
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || 'your-api-key-here', // Replace with your actual API key or use environment variable
+});
+
+// Function to analyze code with OpenAI
+async function analyzeCodeWithAI(code) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a cybersecurity expert. Analyze the provided code for security vulnerabilities. Format your response as JSON with the following structure: {\"vulnerabilities\": [{\"type\": \"vulnerability type\", \"severity\": \"high/medium/low\", \"line\": \"line number or range\", \"description\": \"description of the issue\", \"suggestion\": \"how to fix it\"}]}"
+        },
+        {
+          role: "user",
+          content: `Analyze this code for security vulnerabilities:\n\n${code}`
+        }
+      ],
+      temperature: 0.7,
+    });
+
+    // Try to parse the response as JSON
+    try {
+      return JSON.parse(response.choices[0].message.content);
+    } catch (parseError) {
+      // If parsing fails, return the raw text
+      return {
+        vulnerabilities: [{
+          type: "Analysis Result",
+          severity: "info",
+          line: "N/A",
+          description: response.choices[0].message.content,
+          suggestion: "See description for details"
+        }]
+      };
+    }
+  } catch (error) {
+    console.error('Error analyzing code with OpenAI:', error);
+    throw error;
+  }
+}
+
+// Endpoint to analyze a code snippet
+apiRouter.post('/analyze-code', async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    if (!code) {
+      return res.status(400).send({ error: 'No code provided' });
+    }
+    
+    const analysis = await analyzeCodeWithAI(code);
+    res.send(analysis);
+  } catch (error) {
+    console.error('Error in code analysis endpoint:', error);
+    res.status(500).send({ 
+      error: 'Failed to analyze code',
+      message: error.message 
+    });
+  }
+});
+
+// Default error handler
+app.use(function (err, req, res, next) {
+  console.error(err);
+  res.status(500).send({
+    type: err.name,
+    message: err.message
+  });
+});
+
+// Serve static frontend files
+app.use(express.static('public'));
+
+// Return the application's default page if the path is unknown
+app.use((_req, res) => {
+  res.sendFile('index.html', { root: 'public' });
 });
 
 app.listen(port, () => {
