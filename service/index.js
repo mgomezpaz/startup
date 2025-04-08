@@ -7,11 +7,59 @@ const uuid = require('uuid');
 const fetch = require('node-fetch');
 const { OpenAI } = require('openai');
 
+// Custom error class for API errors
+class APIError extends Error {
+  constructor(message, status = 500, code = 'INTERNAL_SERVER_ERROR') {
+    super(message);
+    this.name = 'APIError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 const app = express();
 
 // Set up our Express app and middleware
 app.use(express.json());
 app.use(cookieParser());
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
+// Middleware to check if a user is logged in
+const verifyAuth = async (req, res, next) => {
+  try {
+    const token = req.cookies[authCookieName];
+    if (!token) {
+      throw new APIError('Authentication required', 401, 'AUTH_REQUIRED');
+    }
+
+    const user = await findUser('token', token);
+    if (!user) {
+      throw new APIError('Invalid or expired session', 401, 'INVALID_SESSION');
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+// JSON parsing error handler
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    res.status(400).json({
+      code: 'INVALID_JSON',
+      message: 'Invalid JSON payload'
+    });
+    return;
+  }
+  next(err);
+});
 
 // Set up the port - use command line arg if provided, otherwise default to 3000
 const port = process.argv.length > 2 ? process.argv[2] : 3000;
@@ -32,9 +80,21 @@ apiRouter.get('/test', (_req, res) => {
 
 // Helper function to create a new user with a hashed password
 async function createUser(email, password) {
+  if (!email || !password) {
+    throw new APIError('Email and password are required', 400, 'MISSING_CREDENTIALS');
+  }
+  
+  if (typeof email !== 'string' || typeof password !== 'string') {
+    throw new APIError('Invalid credential format', 400, 'INVALID_CREDENTIALS');
+  }
+
+  if (password.length < 8) {
+    throw new APIError('Password must be at least 8 characters', 400, 'WEAK_PASSWORD');
+  }
+
   const passwordHash = await bcrypt.hash(password, 10);
   const user = {
-    email: email,
+    email: email.toLowerCase(),
     password: passwordHash,
     token: uuid.v4(),
   };
@@ -57,51 +117,58 @@ function setAuthCookie(res, authToken) {
   });
 }
 
-// Middleware to check if a user is logged in
-const verifyAuth = async (req, res, next) => {
-  const user = await findUser('token', req.cookies[authCookieName]);
-  if (user) {
-    // Store the user info for use in route handlers
-    req.user = user;
-    next();
-  } else {
-    res.status(401).send({ msg: 'Unauthorized' });
-  }
-};
-
 // CreateAuth - Register a new user
-apiRouter.post('/auth/create', async (req, res) => {
-  if (await findUser('email', req.body.email)) {
-    res.status(409).send({ msg: 'User already exists' });
-  } else {
+apiRouter.post('/auth/create', async (req, res, next) => {
+  try {
+    if (await findUser('email', req.body.email?.toLowerCase())) {
+      throw new APIError('User already exists', 409, 'USER_EXISTS');
+    }
+
     const user = await createUser(req.body.email, req.body.password);
     setAuthCookie(res, user.token);
-    res.send({ email: user.email });
+    res.status(201).json({ email: user.email });
+  } catch (error) {
+    next(error);
   }
 });
 
 // GetAuth - Login an existing user
-apiRouter.post('/auth/login', async (req, res) => {
-  const user = await findUser('email', req.body.email);
-  if (user) {
-    if (await bcrypt.compare(req.body.password, user.password)) {
-      user.token = uuid.v4();
-      setAuthCookie(res, user.token);
-      res.send({ email: user.email });
-      return;
+apiRouter.post('/auth/login', async (req, res, next) => {
+  try {
+    if (!req.body.email || !req.body.password) {
+      throw new APIError('Email and password are required', 400, 'MISSING_CREDENTIALS');
     }
+
+    const user = await findUser('email', req.body.email.toLowerCase());
+    if (!user) {
+      throw new APIError('Invalid credentials', 401, 'INVALID_CREDENTIALS');
+    }
+
+    const validPassword = await bcrypt.compare(req.body.password, user.password);
+    if (!validPassword) {
+      throw new APIError('Invalid credentials', 401, 'INVALID_CREDENTIALS');
+    }
+
+    user.token = uuid.v4();
+    setAuthCookie(res, user.token);
+    res.json({ email: user.email });
+  } catch (error) {
+    next(error);
   }
-  res.status(401).send({ msg: 'Unauthorized' });
 });
 
 // DeleteAuth - Logout a user
-apiRouter.delete('/auth/logout', async (req, res) => {
-  const user = await findUser('token', req.cookies[authCookieName]);
-  if (user) {
-    delete user.token;
+apiRouter.delete('/auth/logout', async (req, res, next) => {
+  try {
+    const user = await findUser('token', req.cookies[authCookieName]);
+    if (user) {
+      delete user.token;
+    }
+    res.clearCookie(authCookieName);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
   }
-  res.clearCookie(authCookieName);
-  res.status(204).end();
 });
 
 // For testing purposes - generates fake analysis results while we develop
@@ -143,151 +210,182 @@ function generateMockAnalysisResult(files) {
 }
 
 // SubmitAnalysis - Start a new code analysis
-apiRouter.post('/analysis', verifyAuth, async (req, res) => {
-  const analysisId = uuid.v4();
-  const timestamp = new Date().toISOString();
-  
-  // Create a new analysis record
-  const analysis = {
-    id: analysisId,
-    userId: req.user.email,
-    name: req.body.name,
-    files: req.body.files,
-    date: timestamp,
-    status: 'processing',
-    result: null
-  };
-  
-  analyses.push(analysis);
-  
-  // In a real implementation, we would call OpenAI API here
-  // For now, simulate the analysis with a timeout
-  setTimeout(() => {
-    analysis.status = 'completed';
-    analysis.result = generateMockAnalysisResult(analysis.files);
-  }, 3000);
-  
-  res.send({ 
-    id: analysisId, 
-    status: 'processing' 
-  });
+apiRouter.post('/analysis', verifyAuth, async (req, res, next) => {
+  try {
+    if (!req.body.name || !req.body.files || !Array.isArray(req.body.files)) {
+      throw new APIError('Invalid analysis request format', 400, 'INVALID_REQUEST');
+    }
+
+    const analysisId = uuid.v4();
+    const timestamp = new Date().toISOString();
+    
+    const analysis = {
+      id: analysisId,
+      userId: req.user.email,
+      name: req.body.name,
+      files: req.body.files,
+      date: timestamp,
+      status: 'processing',
+      result: null
+    };
+    
+    analyses.push(analysis);
+    
+    setTimeout(() => {
+      analysis.status = 'completed';
+      analysis.result = generateMockAnalysisResult(analysis.files);
+    }, 3000);
+    
+    res.status(202).json({ 
+      id: analysisId, 
+      status: 'processing' 
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // GetAnalysis - Get a specific analysis result
-apiRouter.get('/analysis/:id', verifyAuth, async (req, res) => {
-  const analysis = analyses.find(a => a.id === req.params.id && a.userId === req.user.email);
-  
-  if (!analysis) {
-    res.status(404).send({ msg: 'Analysis not found' });
-    return;
+apiRouter.get('/analysis/:id', verifyAuth, async (req, res, next) => {
+  try {
+    const analysis = analyses.find(a => a.id === req.params.id && a.userId === req.user.email);
+    
+    if (!analysis) {
+      throw new APIError('Analysis not found', 404, 'NOT_FOUND');
+    }
+    
+    res.json(analysis);
+  } catch (error) {
+    next(error);
   }
-  
-  res.send(analysis);
 });
 
 // GetUserAnalyses - Get all analyses for the current user
-apiRouter.get('/analyses', verifyAuth, async (req, res) => {
-  const userAnalyses = analyses
-    .filter(a => a.userId === req.user.email)
-    .map(a => ({
-      id: a.id,
-      name: a.name,
-      date: a.date,
-      status: a.status
-    }));
-  
-  res.send({ analyses: userAnalyses });
+apiRouter.get('/analyses', verifyAuth, async (req, res, next) => {
+  try {
+    const userAnalyses = analyses
+      .filter(a => a.userId === req.user.email)
+      .map(a => ({
+        id: a.id,
+        name: a.name,
+        date: a.date,
+        status: a.status
+      }));
+    
+    res.json({ analyses: userAnalyses });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Get user statistics and vulnerability trends
-apiRouter.get('/stats', verifyAuth, async (req, res) => {
-  const userAnalyses = analyses.filter(a => a.userId === req.user.email && a.status === 'completed');
-  
-  // Calculate total analyses
-  const totalAnalyses = userAnalyses.length;
-  
-  // Calculate vulnerability statistics
-  const vulnerabilityStats = {
-    total: 0,
-    bySeverity: {
-      Critical: 0,
-      High: 0,
-      Medium: 0,
-      Low: 0
-    },
-    byType: {}
-  };
-  
-  // Calculate trends over time (last 30 days)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  
-  const dailyStats = {};
-  
-  userAnalyses.forEach(analysis => {
-    if (analysis.result) {
-      analysis.result.forEach(fileResult => {
-        fileResult.vulnerabilities.forEach(vuln => {
-          // Count total vulnerabilities
-          vulnerabilityStats.total++;
-          
-          // Count by severity
-          if (vuln.severity in vulnerabilityStats.bySeverity) {
-            vulnerabilityStats.bySeverity[vuln.severity]++;
-          }
-          
-          // Count by type
-          if (!(vuln.type in vulnerabilityStats.byType)) {
-            vulnerabilityStats.byType[vuln.type] = 0;
-          }
-          vulnerabilityStats.byType[vuln.type]++;
-          
-          // Add to daily stats if within last 30 days
-          const analysisDate = new Date(analysis.date);
-          if (analysisDate >= thirtyDaysAgo) {
-            const dateKey = analysisDate.toISOString().split('T')[0];
-            if (!(dateKey in dailyStats)) {
-              dailyStats[dateKey] = {
-                total: 0,
-                bySeverity: { Critical: 0, High: 0, Medium: 0, Low: 0 }
-              };
-            }
-            dailyStats[dateKey].total++;
-            dailyStats[dateKey].bySeverity[vuln.severity]++;
-          }
-        });
+apiRouter.get('/stats', verifyAuth, async (req, res, next) => {
+  try {
+    const userAnalyses = analyses.filter(a => a.userId === req.user.email && a.status === 'completed');
+    
+    if (userAnalyses.length === 0) {
+      return res.json({
+        totalAnalyses: 0,
+        vulnerabilityStats: {
+          total: 0,
+          bySeverity: { Critical: 0, High: 0, Medium: 0, Low: 0 },
+          byType: {}
+        },
+        dailyStats: {},
+        lastUpdated: new Date().toISOString()
       });
     }
-  });
-  
-  res.send({
-    totalAnalyses,
-    vulnerabilityStats,
-    dailyStats,
-    lastUpdated: new Date().toISOString()
-  });
+
+    // Calculate total analyses
+    const totalAnalyses = userAnalyses.length;
+    
+    // Calculate vulnerability statistics
+    const vulnerabilityStats = {
+      total: 0,
+      bySeverity: {
+        Critical: 0,
+        High: 0,
+        Medium: 0,
+        Low: 0
+      },
+      byType: {}
+    };
+    
+    // Calculate trends over time (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const dailyStats = {};
+    
+    userAnalyses.forEach(analysis => {
+      if (analysis.result) {
+        analysis.result.forEach(fileResult => {
+          fileResult.vulnerabilities.forEach(vuln => {
+            // Count total vulnerabilities
+            vulnerabilityStats.total++;
+            
+            // Count by severity
+            if (vuln.severity in vulnerabilityStats.bySeverity) {
+              vulnerabilityStats.bySeverity[vuln.severity]++;
+            }
+            
+            // Count by type
+            if (!(vuln.type in vulnerabilityStats.byType)) {
+              vulnerabilityStats.byType[vuln.type] = 0;
+            }
+            vulnerabilityStats.byType[vuln.type]++;
+            
+            // Add to daily stats if within last 30 days
+            const analysisDate = new Date(analysis.date);
+            if (analysisDate >= thirtyDaysAgo) {
+              const dateKey = analysisDate.toISOString().split('T')[0];
+              if (!(dateKey in dailyStats)) {
+                dailyStats[dateKey] = {
+                  total: 0,
+                  bySeverity: { Critical: 0, High: 0, Medium: 0, Low: 0 }
+                };
+              }
+              dailyStats[dateKey].total++;
+              dailyStats[dateKey].bySeverity[vuln.severity]++;
+            }
+          });
+        });
+      }
+    });
+    
+    res.json({
+      totalAnalyses,
+      vulnerabilityStats,
+      dailyStats,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Generate detailed report for a specific analysis
-apiRouter.get('/analysis/:id/report', verifyAuth, async (req, res) => {
-  const analysis = analyses.find(a => a.id === req.params.id && a.userId === req.user.email);
-  
-  if (!analysis) {
-    res.status(404).send({ msg: 'Analysis not found' });
-    return;
+apiRouter.get('/analysis/:id/report', verifyAuth, async (req, res, next) => {
+  try {
+    const analysis = analyses.find(a => a.id === req.params.id && a.userId === req.user.email);
+    
+    if (!analysis) {
+      throw new APIError('Analysis not found', 404, 'NOT_FOUND');
+    }
+    
+    if (analysis.status !== 'completed') {
+      throw new APIError('Analysis not completed yet', 400, 'NOT_COMPLETED');
+    }
+    
+    // Generate detailed HTML report
+    const report = generateHTMLReport(analysis);
+    
+    // Send report with proper headers for HTML content
+    res.setHeader('Content-Type', 'text/html');
+    res.send(report);
+  } catch (error) {
+    next(error);
   }
-  
-  if (analysis.status !== 'completed') {
-    res.status(400).send({ msg: 'Analysis not completed yet' });
-    return;
-  }
-  
-  // Generate detailed HTML report
-  const report = generateHTMLReport(analysis);
-  
-  // Send report with proper headers for HTML content
-  res.setHeader('Content-Type', 'text/html');
-  res.send(report);
 });
 
 // Helper function to generate HTML report
@@ -422,41 +520,63 @@ async function analyzeCodeWithAI(code) {
 }
 
 // Endpoint to analyze a code snippet
-apiRouter.post('/analyze-code', async (req, res) => {
+apiRouter.post('/analyze-code', async (req, res, next) => {
   try {
     const { code } = req.body;
     
     if (!code) {
-      return res.status(400).send({ error: 'No code provided' });
+      throw new APIError('No code provided', 400, 'MISSING_CODE');
     }
     
     const analysis = await analyzeCodeWithAI(code);
-    res.send(analysis);
+    res.json(analysis);
   } catch (error) {
     console.error('Error in code analysis endpoint:', error);
-    res.status(500).send({ 
-      error: 'Failed to analyze code',
-      message: error.message 
-    });
+    next(error);
   }
 });
 
 // Mount routes in the correct order
 app.use('/api', apiRouter);  // API routes first
 
-// Error handler
-app.use(function (err, req, res, next) {
-  console.error(err);
-  res.status(500).send({
-    type: err.name,
-    message: err.message
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error(`Error: ${err.message}`);
+  console.error(err.stack);
+
+  // Don't send error details in production
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (err instanceof APIError) {
+    res.status(err.status).json({
+      code: err.code,
+      message: err.message
+    });
+  } else {
+    res.status(500).json({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: isProduction ? 'An unexpected error occurred' : err.message,
+      stack: isProduction ? undefined : err.stack
+    });
+  }
+});
+
+// Handle 404s for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    code: 'NOT_FOUND',
+    message: 'API endpoint not found'
   });
 });
 
-// Static files and catch-all route last
+// Serve static files for non-API routes
 app.use(express.static('public'));
-app.use((_req, res) => {
-  res.sendFile('index.html', { root: 'public' });
+
+// Catch-all route for the frontend
+app.use((req, res) => {
+  if (!req.path.startsWith('/api/')) {
+    res.sendFile('index.html', { root: 'public' });
+  }
 });
 
 // Start the server!
