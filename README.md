@@ -96,9 +96,11 @@ For this deliverable I did the following. I checked the box `[x]` and added a de
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [X] **Bundled using Vite** 
-- [X] **Components** 
-- [X] **Router** 
+- [X] **Bundled using Vite** - Set up my project with Vite and it's super fast!
+
+- [X] **Components** - Split everything into React components! Created separate components for Login, Analyzer, History, and About pages. 
+
+- [X] **Router** - Implemented React Router to handle navigation. Now users can move between different sections of the app without page refreshes.
 
 ## 🚀 React part 2: Reactivity
 
