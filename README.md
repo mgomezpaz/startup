@@ -71,26 +71,39 @@ For this deliverable I did the following. I checked the box `[x]` and added a de
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [X] **HTML pages**
-- [X] **Proper HTML element usage**
-- [X] **Links**
-- [X] **Text**
-- [X] **3rd party API placeholder**
-- [X] **Images**
-- [X] **Login placeholder**
-- [X] **DB data placeholder**
-- [X] **WebSocket placeholder**
+- [X] **HTML pages** - Built four main HTML pages for my app! Created a login page, an analyzer dashboard page, a history page, and an about page. Everything links together nicely.
+
+- [X] **Proper HTML element usage** - Used semantic HTML throughout with headers, footers, main sections, and forms. Tried to keep it clean and accessible.
+
+- [X] **Links** - Added navigation links between all pages. The nav bar makes it easy to jump between different sections of the app.
+
+- [X] **Text** - Wrote up some catchy descriptions explaining what the app does and how to use each feature. Added placeholder text for the analysis results too.
+
+- [X] **3rd party API placeholder** - Created a spot where the OpenAI-powered analysis will show up later. For now it just shows what the results might look like.
+
+- [X] **Images** - Added a logo in the header and some placeholder images in the about section. Makes it look much more professional!
+
+- [X] **Login placeholder** - Set up the login form with email and password fields. It doesn't authenticate yet but the structure is all there.
+
+- [X] **DB data placeholder** - Added tables and cards in the history page to show what previous analysis results will look like once we have a database.
+
+- [X] **WebSocket placeholder** - Created an activity log section that will eventually show real-time updates. For now it just has some example notifications.
 
 ## 🚀 CSS deliverable
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [X] **Header, footer, and main content body**
-- [X] **Navigation elements** 
-- [X] **Responsive to window resizing** 
-- [X] **Application elements** 
-- [X] **Application text content** 
-- [X] **Application images** 
+- [X] **Header, footer, and main content body** - Created a clean, modern layout with a fixed header and footer. The dark-themed header really makes the logo pop!
+
+- [X] **Navigation elements** - Styled the nav bar with hover effects and active states. It's easy to see which page you're on and the links feel nice to click.
+
+- [X] **Responsive to window resizing** - Made everything look good on phones, tablets, and desktops. The analyzer dashboard switches from a grid to a single column on smaller screens.
+
+- [X] **Application elements** - Added some nice styling to forms, buttons, and cards. Used a consistent color scheme of dark backgrounds with bright accents for important actions.
+
+- [X] **Application text content** - Chose easy-to-read fonts and made sure there's enough contrast. Used different text sizes to create hierarchy and draw attention to important info.
+
+- [X] **Application images** - Made images resize properly and added some subtle border effects. The placeholder images actually look pretty nice with the styling!
 
 ## 🚀 React part 1: Routing deliverable
 
