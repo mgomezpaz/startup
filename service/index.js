@@ -24,7 +24,6 @@ let analyses = [];
 
 // Create our API router and attach it to the /api path
 const apiRouter = express.Router();
-app.use('/api', apiRouter);
 
 // Quick health check endpoint to make sure our service is running
 apiRouter.get('/test', (_req, res) => {
@@ -200,6 +199,178 @@ apiRouter.get('/analyses', verifyAuth, async (req, res) => {
   res.send({ analyses: userAnalyses });
 });
 
+// Get user statistics and vulnerability trends
+apiRouter.get('/stats', verifyAuth, async (req, res) => {
+  const userAnalyses = analyses.filter(a => a.userId === req.user.email && a.status === 'completed');
+  
+  // Calculate total analyses
+  const totalAnalyses = userAnalyses.length;
+  
+  // Calculate vulnerability statistics
+  const vulnerabilityStats = {
+    total: 0,
+    bySeverity: {
+      Critical: 0,
+      High: 0,
+      Medium: 0,
+      Low: 0
+    },
+    byType: {}
+  };
+  
+  // Calculate trends over time (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const dailyStats = {};
+  
+  userAnalyses.forEach(analysis => {
+    if (analysis.result) {
+      analysis.result.forEach(fileResult => {
+        fileResult.vulnerabilities.forEach(vuln => {
+          // Count total vulnerabilities
+          vulnerabilityStats.total++;
+          
+          // Count by severity
+          if (vuln.severity in vulnerabilityStats.bySeverity) {
+            vulnerabilityStats.bySeverity[vuln.severity]++;
+          }
+          
+          // Count by type
+          if (!(vuln.type in vulnerabilityStats.byType)) {
+            vulnerabilityStats.byType[vuln.type] = 0;
+          }
+          vulnerabilityStats.byType[vuln.type]++;
+          
+          // Add to daily stats if within last 30 days
+          const analysisDate = new Date(analysis.date);
+          if (analysisDate >= thirtyDaysAgo) {
+            const dateKey = analysisDate.toISOString().split('T')[0];
+            if (!(dateKey in dailyStats)) {
+              dailyStats[dateKey] = {
+                total: 0,
+                bySeverity: { Critical: 0, High: 0, Medium: 0, Low: 0 }
+              };
+            }
+            dailyStats[dateKey].total++;
+            dailyStats[dateKey].bySeverity[vuln.severity]++;
+          }
+        });
+      });
+    }
+  });
+  
+  res.send({
+    totalAnalyses,
+    vulnerabilityStats,
+    dailyStats,
+    lastUpdated: new Date().toISOString()
+  });
+});
+
+// Generate detailed report for a specific analysis
+apiRouter.get('/analysis/:id/report', verifyAuth, async (req, res) => {
+  const analysis = analyses.find(a => a.id === req.params.id && a.userId === req.user.email);
+  
+  if (!analysis) {
+    res.status(404).send({ msg: 'Analysis not found' });
+    return;
+  }
+  
+  if (analysis.status !== 'completed') {
+    res.status(400).send({ msg: 'Analysis not completed yet' });
+    return;
+  }
+  
+  // Generate detailed HTML report
+  const report = generateHTMLReport(analysis);
+  
+  // Send report with proper headers for HTML content
+  res.setHeader('Content-Type', 'text/html');
+  res.send(report);
+});
+
+// Helper function to generate HTML report
+function generateHTMLReport(analysis) {
+  let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Security Analysis Report - ${analysis.name}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .header { background: #f5f5f5; padding: 20px; border-radius: 5px; }
+        .vulnerability { margin: 20px 0; padding: 15px; border-left: 4px solid; }
+        .Critical { border-color: #dc3545; background: #fff5f5; }
+        .High { border-color: #fd7e14; background: #fff9f0; }
+        .Medium { border-color: #ffc107; background: #fffde7; }
+        .Low { border-color: #28a745; background: #f0fff4; }
+        .suggestion { background: #e9ecef; padding: 10px; margin-top: 10px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Security Analysis Report</h1>
+        <p>Analysis Name: ${analysis.name}</p>
+        <p>Date: ${new Date(analysis.date).toLocaleString()}</p>
+        <p>User: ${analysis.userId}</p>
+      </div>
+  `;
+  
+  // Add summary section
+  let totalVulnerabilities = 0;
+  const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+  
+  analysis.result.forEach(fileResult => {
+    fileResult.vulnerabilities.forEach(vuln => {
+      totalVulnerabilities++;
+      if (vuln.severity in severityCounts) {
+        severityCounts[vuln.severity]++;
+      }
+    });
+  });
+  
+  html += `
+    <h2>Summary</h2>
+    <p>Total Files Analyzed: ${analysis.result.length}</p>
+    <p>Total Vulnerabilities Found: ${totalVulnerabilities}</p>
+    <ul>
+      ${Object.entries(severityCounts)
+        .map(([severity, count]) => `<li>${severity}: ${count}</li>`)
+        .join('')}
+    </ul>
+  `;
+  
+  // Add detailed findings
+  html += '<h2>Detailed Findings</h2>';
+  
+  analysis.result.forEach(fileResult => {
+    if (fileResult.vulnerabilities.length > 0) {
+      html += `<h3>File: ${fileResult.path}</h3>`;
+      
+      fileResult.vulnerabilities.forEach(vuln => {
+        html += `
+          <div class="vulnerability ${vuln.severity}">
+            <h4>${vuln.type} (${vuln.severity})</h4>
+            <p>Line: ${vuln.line}</p>
+            <p>${vuln.description}</p>
+            <div class="suggestion">
+              <strong>Suggestion:</strong> ${vuln.suggestion}
+            </div>
+          </div>
+        `;
+      });
+    }
+  });
+  
+  html += `
+    </body>
+    </html>
+  `;
+  
+  return html;
+}
+
 // Set up OpenAI for our code analysis
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -270,7 +441,10 @@ apiRouter.post('/analyze-code', async (req, res) => {
   }
 });
 
-// Standard error handler for the whole app
+// Mount routes in the correct order
+app.use('/api', apiRouter);  // API routes first
+
+// Error handler
 app.use(function (err, req, res, next) {
   console.error(err);
   res.status(500).send({
@@ -279,10 +453,8 @@ app.use(function (err, req, res, next) {
   });
 });
 
-// Serve our React frontend
+// Static files and catch-all route last
 app.use(express.static('public'));
-
-// For any other routes, just send back our frontend app
 app.use((_req, res) => {
   res.sendFile('index.html', { root: 'public' });
 });
