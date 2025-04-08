@@ -85,27 +85,27 @@ For this deliverable I did the following. I checked the box `[x]` and added a de
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [X] **Header, footer, and main content body** - I did not complete this part of the deliverable.
-- [X] **Navigation elements** - I did not complete this part of the deliverable.
-- [X] **Responsive to window resizing** - I did not complete this part of the deliverable.
-- [X] **Application elements** - I did not complete this part of the deliverable.
-- [X] **Application text content** - I did not complete this part of the deliverable.
-- [X] **Application images** - I did not complete this part of the deliverable.
+- [X] **Header, footer, and main content body**
+- [X] **Navigation elements** 
+- [X] **Responsive to window resizing** 
+- [X] **Application elements** 
+- [X] **Application text content** 
+- [X] **Application images** 
 
 ## 🚀 React part 1: Routing deliverable
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [X] **Bundled using Vite** - I did complete this part of the deliverable.
-- [X] **Components** - I did complete this part of the deliverable.
-- [X] **Router** - Routing between login and voting components.
+- [X] **Bundled using Vite** 
+- [X] **Components** 
+- [X] **Router** 
 
 ## 🚀 React part 2: Reactivity
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [X] **All functionality implemented or mocked out** - I did not complete this part of the deliverable.
-- [X] **Hooks** - I did not complete this part of the deliverable.
+- [X] **All functionality implemented or mocked out** 
+- [X] **Hooks** 
 
 ## 🚀 Service deliverable
 
