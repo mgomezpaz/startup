@@ -7,27 +7,29 @@ const { OpenAI } = require('openai');
 
 const app = express();
 
-// Parse JSON and cookies
+// Set up our Express app and middleware
 app.use(express.json());
 app.use(cookieParser());
 
+// Set up the port - use command line arg if provided, otherwise default to 3000
 const port = process.argv.length > 2 ? process.argv[2] : 3000;
 const authCookieName = 'securecode_token';
 
-// In-memory data structures (will replace with MongoDB later)
+// We'll store users and analyses in memory for now
+// TODO: Move this to MongoDB in the database phase
 let users = [];
 let analyses = [];
 
-// Set up API router
+// Create our API router and attach it to the /api path
 const apiRouter = express.Router();
 app.use('/api', apiRouter);
 
-// Add a simple test endpoint
+// Quick health check endpoint to make sure our service is running
 apiRouter.get('/test', (_req, res) => {
   res.send({ msg: 'SecureCode service is running' });
 });
 
-// Authentication helper functions
+// Helper function to create a new user with a hashed password
 async function createUser(email, password) {
   const passwordHash = await bcrypt.hash(password, 10);
   const user = {
@@ -39,11 +41,13 @@ async function createUser(email, password) {
   return user;
 }
 
+// Helper function to find a user by any field (email, token, etc)
 async function findUser(field, value) {
   if (!value) return null;
   return users.find((u) => u[field] === value);
 }
 
+// Set up our authentication cookie with secure settings
 function setAuthCookie(res, authToken) {
   res.cookie(authCookieName, authToken, {
     secure: true,
@@ -52,11 +56,12 @@ function setAuthCookie(res, authToken) {
   });
 }
 
-// Authentication middleware
+// Middleware to check if a user is logged in
 const verifyAuth = async (req, res, next) => {
   const user = await findUser('token', req.cookies[authCookieName]);
   if (user) {
-    req.user = user; // Attach user to request for use in handlers
+    // Store the user info for use in route handlers
+    req.user = user;
     next();
   } else {
     res.status(401).send({ msg: 'Unauthorized' });
@@ -98,7 +103,7 @@ apiRouter.delete('/auth/logout', async (req, res) => {
   res.status(204).end();
 });
 
-// Mock function to generate analysis results for demo purposes
+// For testing purposes - generates fake analysis results while we develop
 function generateMockAnalysisResult(files) {
   const vulnerabilityTypes = [
     'SQL Injection', 
@@ -111,7 +116,7 @@ function generateMockAnalysisResult(files) {
   const severityLevels = ['Low', 'Medium', 'High', 'Critical'];
   
   return files.map(file => {
-    // Generate between 0-3 random vulnerabilities per file
+    // Add 0-3 random vulnerabilities to make it look realistic
     const vulnCount = Math.floor(Math.random() * 4);
     const vulnerabilities = [];
     
@@ -193,14 +198,16 @@ apiRouter.get('/analyses', verifyAuth, async (req, res) => {
   res.send({ analyses: userAnalyses });
 });
 
-// Initialize OpenAI client
+// Set up OpenAI for our code analysis
+// Make sure to add your API key in production!
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'your-api-key-here', // Replace with your actual API key or use environment variable
+  apiKey: process.env.OPENAI_API_KEY || 'your-api-key-here',
 });
 
-// Function to analyze code with OpenAI
+// Main function to analyze code using OpenAI's API
 async function analyzeCodeWithAI(code) {
   try {
+    // Ask OpenAI to analyze our code for security issues
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -216,11 +223,11 @@ async function analyzeCodeWithAI(code) {
       temperature: 0.7,
     });
 
-    // Try to parse the response as JSON
+    // Try to parse OpenAI's response as JSON
     try {
       return JSON.parse(response.choices[0].message.content);
     } catch (parseError) {
-      // If parsing fails, return the raw text
+      // If parsing fails, wrap the raw response in our expected format
       return {
         vulnerabilities: [{
           type: "Analysis Result",
@@ -257,7 +264,7 @@ apiRouter.post('/analyze-code', async (req, res) => {
   }
 });
 
-// Default error handler
+// Standard error handler for the whole app
 app.use(function (err, req, res, next) {
   console.error(err);
   res.status(500).send({
@@ -266,14 +273,15 @@ app.use(function (err, req, res, next) {
   });
 });
 
-// Serve static frontend files
+// Serve our React frontend
 app.use(express.static('public'));
 
-// Return the application's default page if the path is unknown
+// For any other routes, just send back our frontend app
 app.use((_req, res) => {
   res.sendFile('index.html', { root: 'public' });
 });
 
+// Start the server!
 app.listen(port, () => {
   console.log(`SecureCode service listening on port ${port}`);
 });
