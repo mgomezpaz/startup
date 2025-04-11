@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const uuid = require('uuid');
 const fetch = require('node-fetch');
 const { OpenAI } = require('openai');
+const DB = require('./database.js');
 
 // Custom error class for API errors
 class APIError extends Error {
@@ -98,14 +99,20 @@ async function createUser(email, password) {
     password: passwordHash,
     token: uuid.v4(),
   };
-  users.push(user);
+  await DB.addUser(user);
   return user;
 }
 
 // Helper function to find a user by any field (email, token, etc)
 async function findUser(field, value) {
   if (!value) return null;
-  return users.find((u) => u[field] === value);
+  
+  if (field === 'email') {
+    return DB.getUser(value);
+  } else if (field === 'token') {
+    return DB.getUserByToken(value);
+  }
+  return null;
 }
 
 // Set up our authentication cookie with secure settings
