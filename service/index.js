@@ -157,6 +157,7 @@ apiRouter.post('/auth/login', async (req, res, next) => {
     }
 
     user.token = uuid.v4();
+    await DB.updateUser(user);
     setAuthCookie(res, user.token);
     res.json({ email: user.email });
   } catch (error) {
@@ -170,6 +171,7 @@ apiRouter.delete('/auth/logout', async (req, res, next) => {
     const user = await findUser('token', req.cookies[authCookieName]);
     if (user) {
       delete user.token;
+      await DB.updateUser(user);
     }
     res.clearCookie(authCookieName);
     res.status(204).end();
@@ -216,70 +218,79 @@ function generateMockAnalysisResult(files) {
   });
 }
 
-// SubmitAnalysis - Start a new code analysis
-apiRouter.post('/analysis', verifyAuth, async (req, res, next) => {
+// Submit code for analysis
+apiRouter.post('/analyze', verifyAuth, async (req, res, next) => {
   try {
-    if (!req.body.name || !req.body.files || !Array.isArray(req.body.files)) {
-      throw new APIError('Invalid analysis request format', 400, 'INVALID_REQUEST');
+    const { files } = req.body;
+    
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      throw new APIError('No files provided for analysis', 400, 'NO_FILES');
     }
-
-    const analysisId = uuid.v4();
-    const timestamp = new Date().toISOString();
     
-    const analysis = {
-      id: analysisId,
-      userId: req.user.email,
-      name: req.body.name,
-      files: req.body.files,
-      date: timestamp,
-      status: 'processing',
-      result: null
-    };
-    
-    analyses.push(analysis);
-    
-    setTimeout(() => {
-      analysis.status = 'completed';
-      analysis.result = generateMockAnalysisResult(analysis.files);
-    }, 3000);
-    
-    res.status(202).json({ 
-      id: analysisId, 
-      status: 'processing' 
-    });
+    let result;
+    try {
+      // In development, we'll just generate mock results to avoid OpenAI API costs
+      if (process.env.NODE_ENV === 'development') {
+        result = generateMockAnalysisResult(files);
+      } else {
+        // In production, use the OpenAI API
+        // Combine all code for analysis
+        const allCode = files.map(f => `File: ${f.name}\n\n${f.content}`).join('\n\n');
+        result = await analyzeCodeWithAI(allCode);
+      }
+      
+      // Create and store the analysis record
+      const analysis = {
+        userEmail: req.user.email,
+        date: new Date(),
+        files: files.map(f => f.name),
+        result: result
+      };
+      
+      const dbResult = await DB.addAnalysis(analysis);
+      analysis._id = dbResult.insertedId;
+      
+      res.json(analysis);
+    } catch (error) {
+      console.error('Analysis error:', error);
+      throw new APIError('Analysis failed', 500, 'ANALYSIS_FAILED');
+    }
   } catch (error) {
     next(error);
   }
 });
 
-// GetAnalysis - Get a specific analysis result
+// Get user's analysis history
+apiRouter.get('/history', verifyAuth, async (req, res, next) => {
+  try {
+    const history = await DB.getAnalysisHistory(req.user.email);
+    res.json(history);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get a specific analysis by ID
 apiRouter.get('/analysis/:id', verifyAuth, async (req, res, next) => {
   try {
-    const analysis = analyses.find(a => a.id === req.params.id && a.userId === req.user.email);
+    const { id } = req.params;
+    
+    if (!id) {
+      throw new APIError('Analysis ID is required', 400, 'MISSING_ID');
+    }
+    
+    const analysis = await DB.getAnalysisById(id);
     
     if (!analysis) {
       throw new APIError('Analysis not found', 404, 'NOT_FOUND');
     }
     
-    res.json(analysis);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// GetUserAnalyses - Get all analyses for the current user
-apiRouter.get('/analyses', verifyAuth, async (req, res, next) => {
-  try {
-    const userAnalyses = analyses
-      .filter(a => a.userId === req.user.email)
-      .map(a => ({
-        id: a.id,
-        name: a.name,
-        date: a.date,
-        status: a.status
-      }));
+    // Only allow users to access their own analyses
+    if (analysis.userEmail !== req.user.email) {
+      throw new APIError('Access denied', 403, 'ACCESS_DENIED');
+    }
     
-    res.json({ analyses: userAnalyses });
+    res.json(analysis);
   } catch (error) {
     next(error);
   }
