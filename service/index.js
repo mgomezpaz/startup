@@ -125,7 +125,7 @@ function setAuthCookie(res, authToken) {
 }
 
 // CreateAuth - Register a new user
-apiRouter.post('/auth/create', async (req, res, next) => {
+apiRouter.post('/auth/register', async (req, res, next) => {
   try {
     if (await findUser('email', req.body.email?.toLowerCase())) {
       throw new APIError('User already exists', 409, 'USER_EXISTS');
