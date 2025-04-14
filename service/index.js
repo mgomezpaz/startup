@@ -89,6 +89,12 @@ async function createUser(email, password) {
     throw new APIError('Invalid credential format', 400, 'INVALID_CREDENTIALS');
   }
 
+  // Add email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new APIError('Invalid email format', 400, 'INVALID_EMAIL');
+  }
+
   if (password.length < 8) {
     throw new APIError('Password must be at least 8 characters', 400, 'WEAK_PASSWORD');
   }
@@ -550,6 +556,25 @@ apiRouter.post('/analyze-code', async (req, res, next) => {
     res.json(analysis);
   } catch (error) {
     console.error('Error in code analysis endpoint:', error);
+    next(error);
+  }
+});
+
+// Add analyze endpoint
+apiRouter.get('/analyze', verifyAuth, async (req, res, next) => {
+  try {
+    res.json({ message: 'Protected analyze endpoint accessed successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get analysis history for the authenticated user
+apiRouter.get('/analyze/history', verifyAuth, async (req, res, next) => {
+  try {
+    const history = await DB.getAnalysisHistory(req.user.email);
+    res.json(history);
+  } catch (error) {
     next(error);
   }
 });

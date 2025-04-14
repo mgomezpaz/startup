@@ -5,76 +5,29 @@ export function History({ userName }) {
   const [analysisHistory, setAnalysisHistory] = React.useState([]);
   const [selectedAnalysis, setSelectedAnalysis] = React.useState(null);
   const [sortConfig, setSortConfig] = React.useState({ key: 'date', direction: 'desc' });
+  const [error, setError] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
 
-  // Mock data - this would normally come from your backend
+  // Fetch real analysis history from the backend
   React.useEffect(() => {
-    const mockHistory = [
-      {
-        id: 1,
-        projectName: 'project1.zip',
-        date: '2024-03-15T10:30:00',
-        vulnerabilities: {
-          high: 2,
-          medium: 1,
-          low: 0
-        },
-        results: {
-          vulnerabilities: [
-            {
-              file: 'src/main.js',
-              line: 42,
-              severity: 'high',
-              description: 'Potential SQL injection vulnerability detected',
-              code: 'const query = `SELECT * FROM users WHERE id = ${userId}`;'
-            },
-            {
-              file: 'src/auth.js',
-              line: 15,
-              severity: 'high',
-              description: 'Weak password hashing algorithm',
-              code: 'const hash = md5(password);'
-            }
-          ]
+    const fetchHistory = async () => {
+      try {
+        const response = await fetch('/api/analyze/history');
+        if (!response.ok) {
+          throw new Error('Failed to fetch analysis history');
         }
-      },
-      {
-        id: 2,
-        projectName: 'test_code.zip',
-        date: '2024-03-14T15:45:00',
-        vulnerabilities: {
-          high: 0,
-          medium: 0,
-          low: 0
-        },
-        results: {
-          vulnerabilities: []
-        }
-      },
-      {
-        id: 3,
-        projectName: 'backend_src.zip',
-        date: '2024-03-10T09:20:00',
-        vulnerabilities: {
-          high: 2,
-          medium: 2,
-          low: 1
-        },
-        results: {
-          vulnerabilities: [
-            {
-              file: 'api/users.js',
-              line: 28,
-              severity: 'high',
-              description: 'Unvalidated file upload',
-              code: 'await fs.writeFile(path.join("/uploads", filename), data);'
-            }
-          ]
-        }
+        const data = await response.json();
+        setAnalysisHistory(data);
+      } catch (err) {
+        setError(err.message);
+        console.error('Error fetching analysis history:', err);
+      } finally {
+        setLoading(false);
       }
-    ];
+    };
 
-    setAnalysisHistory(mockHistory);
-  }, []);
+    fetchHistory();
+  }, [userName]); // Refetch when userName changes
 
   const handleSort = (key) => {
     setSortConfig(prevConfig => ({
