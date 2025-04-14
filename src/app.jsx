@@ -8,6 +8,7 @@ import { About } from './about/about';
 import { History } from './history/history';
 import { Analyzer } from './analyzer/analyzer';
 import { AuthState } from './login/authState';
+import Register from './login/register';
 
 export default function App() {
     const [userName, setUserName] = React.useState(localStorage.getItem('userName') || '');
@@ -65,6 +66,7 @@ export default function App() {
             />
           } 
         />
+        <Route path="/register" element={<Register />} />
         <Route 
           path="/analyzer" 
           element={
