@@ -127,29 +127,21 @@ For this deliverable I did the following. I checked the box `[x]` and added a de
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-<<<<<<< HEAD
-- [x] **Node.js/Express HTTP service** - Created a backend service using Express that provides authentication and code analysis endpoints.
-- [x] **Static middleware for frontend** - Added Express static middleware to serve the frontend files from the public directory.
-- [x] **Calls to third party endpoints** - With the OpenAI API to analyze code for security vulnerabilities.
-- [x] **Backend service endpoints** - Created endpoints for user authentication (register, login, logout) and code analysis (submit code, get analysis, get user analyses).
-- [x] **Frontend calls service endpoints** - Frontend components make fetch requests to the service endpoints for authentication and code analysis.
-=======
 - [X] **Node.js/Express HTTP service** - Created a backend service using Express that provides authentication and code analysis endpoints.
 - [X] **Static middleware for frontend** - Added Express static middleware to serve the frontend files from the public directory.
-- [X] **Calls to third party endpoints** - Integrated with the OpenAI API to analyze code for security vulnerabilities, providing professional security insights on user-submitted code.
+- [X] **Calls to third party endpoints** - With the OpenAI API to analyze code for security vulnerabilities.
 - [X] **Backend service endpoints** - Created endpoints for user authentication (register, login, logout) and code analysis (submit code, get analysis, get user analyses).
 - [X] **Frontend calls service endpoints** - Frontend components make fetch requests to the service endpoints for authentication and code analysis.
->>>>>>> eddfad29bf35c86ea694dbb282971cc38799f8ce
 
 ## 🚀 DB/Login deliverable
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [ ] **User registration** - I did not complete this part of the deliverable.
-- [ ] **User login and logout** - I did not complete this part of the deliverable.
-- [ ] **Stores data in MongoDB** - I did not complete this part of the deliverable.
-- [ ] **Stores credentials in MongoDB** - I did not complete this part of the deliverable.
-- [ ] **Restricts functionality based on authentication** - I did not complete this part of the deliverable.
+- [x] **User registration** - Implemented a secure registration system with email validation, password hashing, and duplicate email checking. Users can create accounts through the registration form.
+- [x] **User login and logout** - Added secure login functionality with token-based authentication and proper session management. Users can log in and out securely.
+- [x] **Stores data in MongoDB** - Implemented MongoDB integration for storing user data and analysis history. All data is properly persisted in the database.
+- [x] **Stores credentials in MongoDB** - Securely stores user credentials with proper password hashing using bcrypt. No plain text passwords are stored.
+- [x] **Restricts functionality based on authentication** - Added protected routes and authentication checks. Only authenticated users can access the analyzer and history features.
 
 ## 🚀 WebSocket deliverable
 
