@@ -11,14 +11,26 @@ export function Login({ userName, authState, onAuthChange }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    // For now, we'll just do basic validation
     if (!email || !password) {
       setDisplayError('Please fill in all fields');
       return;
     }
 
-    // Mock authentication - in the future, this will call your backend
     try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
       // Store in localStorage
       localStorage.setItem('userName', email);
       
@@ -30,13 +42,8 @@ export function Login({ userName, authState, onAuthChange }) {
       // Redirect to analyzer page
       navigate('/analyzer');
     } catch (error) {
-      setDisplayError('Failed to login. Please try again.');
+      setDisplayError(error.message || 'Failed to login. Please try again.');
     }
-  };
-
-  const handleCreateAccount = async () => {
-    // For now, we'll use the same logic as login
-    handleLogin(new Event('submit'));
   };
 
   return (
@@ -51,6 +58,7 @@ export function Login({ userName, authState, onAuthChange }) {
               onClick={() => {
                 localStorage.removeItem('userName');
                 onAuthChange('', AuthState.Unauthenticated);
+                fetch('/api/auth/logout', { method: 'POST' });
               }}
             >
               Logout
@@ -89,7 +97,7 @@ export function Login({ userName, authState, onAuthChange }) {
                 <button 
                   type="button" 
                   className="btn btn-secondary"
-                  onClick={handleCreateAccount}
+                  onClick={() => navigate('/register')}
                 >
                   Create Account
                 </button>
