@@ -1,8 +1,10 @@
+import React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthState } from './authState';
 import './login.css';
 
-export default function Register() {
+export default function Register({ onAuthChange }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -47,55 +49,72 @@ export default function Register() {
       }
 
       setSuccess('Registration successful! Redirecting to login...');
-      setTimeout(() => navigate('/login'), 2000);
+      setTimeout(() => {
+        onAuthChange(email, AuthState.Authenticated);
+        navigate('/analyzer');
+      }, 2000);
     } catch (err) {
       setError(err.message);
     }
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-box">
-        <h2>Register</h2>
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
+    <main className="container">
+      <section id="register" className="centered-content">
+        <h2>Create Account</h2>
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="alert alert-success" role="alert">
+            {success}
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+          <div className="input-group mb-3">
             <input
               type="email"
-              id="email"
+              className="form-control"
+              placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+          <div className="input-group mb-3">
             <input
               type="password"
-              id="password"
+              className="form-control"
+              placeholder="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+          <div className="input-group mb-3">
             <input
               type="password"
-              id="confirmPassword"
+              className="form-control"
+              placeholder="confirm password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
             />
           </div>
-          <button type="submit" className="auth-button">Register</button>
+          <div className="button-group">
+            <button type="submit" className="btn btn-primary">Register</button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => navigate('/')}
+            >
+              Back to Login
+            </button>
+          </div>
         </form>
-        <p className="auth-link">
-          Already have an account? <a href="/login">Login</a>
-        </p>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 } 
