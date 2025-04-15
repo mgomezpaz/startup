@@ -13,6 +13,7 @@ export function Analyzer({ userName }) {
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [analysisResults, setAnalysisResults] = React.useState(null);
   const [notifications, setNotifications] = React.useState([]);
+  const [currentAnalysisId, setCurrentAnalysisId] = React.useState(null);
 
   const addNotification = (message) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -51,46 +52,119 @@ export function Analyzer({ userName }) {
     addNotification(`File selected: ${selectedFile.name}`);
   };
 
-  const mockAnalysis = async () => {
-    // Simulate file upload progress
-    for (let i = 0; i <= 100; i += 10) {
-      setUploadProgress(i);
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
+  const checkAnalysisStatus = async (analysisId) => {
+    try {
+      console.log(`Checking analysis status for ID: ${analysisId}`);
+      const response = await fetch(`/api/analysis/${analysisId}`, {
+        credentials: 'include'
+      });
 
-    // Mock analysis results
-    setIsAnalyzing(true);
-    addNotification('Analysis started...');
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock results
-    setAnalysisResults({
-      vulnerabilities: [
-        {
-          file: 'src/main.js',
-          line: 42,
-          severity: 'high',
-          description: 'Potential SQL injection vulnerability detected',
-          code: 'const query = `SELECT * FROM users WHERE id = ${userId}`;'
-        },
-        {
-          file: 'src/auth.js',
-          line: 15,
-          severity: 'medium',
-          description: 'Weak password hashing algorithm',
-          code: 'const hash = md5(password);'
-        }
-      ],
-      summary: {
-        highSeverity: 1,
-        mediumSeverity: 1,
-        lowSeverity: 0
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Status check failed:', error);
+        throw new Error(error.message || 'Failed to check analysis status');
       }
-    });
 
-    setIsAnalyzing(false);
-    addNotification('Analysis completed');
+      const analysis = await response.json();
+      console.log(`Current status: ${analysis.status}`);
+      
+      if (analysis.status === 'completed') {
+        console.log('Analysis completed, updating results...');
+        setIsAnalyzing(false);
+        if (analysis.results) {
+          setAnalysisResults(analysis.results);
+          addNotification('Analysis completed');
+        } else {
+          setError('Analysis completed but no results found');
+        }
+        return true;
+      } else if (analysis.status === 'failed') {
+        console.log('Analysis failed:', analysis.error);
+        setIsAnalyzing(false);
+        setError(analysis.error || 'Analysis failed');
+        return true;
+      } else if (analysis.status === 'analyzing') {
+        console.log('Analysis in progress...');
+        addNotification('Analysis in progress...');
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error checking analysis status:', error);
+      setIsAnalyzing(false);
+      setError(error.message);
+      return true;
+    }
+  };
+
+  const startAnalysis = async () => {
+    try {
+      const formData = new FormData();
+      if (file) {
+        formData.append('file', file);
+      }
+      if (repoUrl) {
+        formData.append('repoUrl', repoUrl);
+      }
+      if (notes) {
+        formData.append('notes', notes);
+      }
+
+      console.log('Starting new analysis...');
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to start analysis');
+      }
+
+      const data = await response.json();
+      console.log('Received response:', data);
+      
+      // Add a small delay to ensure database is ready
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Try to fetch the analysis with retry logic
+      let retries = 3;
+      let analysisId = data.id || data.analysisId;
+      
+      if (!analysisId) {
+        throw new Error('No analysis ID received from server');
+      }
+
+      console.log(`Analysis started with ID: ${analysisId}`);
+      setCurrentAnalysisId(analysisId);
+      setIsAnalyzing(true);
+      setError(null);
+      addNotification('Analysis started...');
+
+      // Poll for results with retry logic
+      const pollInterval = setInterval(async () => {
+        try {
+          const isComplete = await checkAnalysisStatus(analysisId);
+          if (isComplete) {
+            clearInterval(pollInterval);
+          }
+        } catch (error) {
+          console.error('Error checking status:', error);
+          retries--;
+          if (retries <= 0) {
+            clearInterval(pollInterval);
+            setError('Failed to check analysis status after multiple attempts');
+            setIsAnalyzing(false);
+          }
+        }
+      }, 2000);
+
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      setError(error.message);
+      setIsAnalyzing(false);
+    }
   };
 
   const handleAnalyze = async (e) => {
@@ -102,7 +176,7 @@ export function Analyzer({ userName }) {
     }
 
     try {
-      await mockAnalysis();
+      await startAnalysis();
     } catch (error) {
       setError('Analysis failed. Please try again.');
       setIsAnalyzing(false);
@@ -198,37 +272,29 @@ export function Analyzer({ userName }) {
       {analysisResults && (
         <div className="analysis-results">
           <h2>Analysis Results</h2>
-          <div className="summary-box">
+          <div className="vulnerability-summary">
             <h3>Summary</h3>
             <div className="severity-counts">
-              <div className="severity high">
-                <span className="count">{analysisResults.summary.highSeverity}</span>
-                <span className="label">High</span>
-              </div>
-              <div className="severity medium">
-                <span className="count">{analysisResults.summary.mediumSeverity}</span>
-                <span className="label">Medium</span>
-              </div>
-              <div className="severity low">
-                <span className="count">{analysisResults.summary.lowSeverity}</span>
-                <span className="label">Low</span>
-              </div>
+              <span className="high">High: {analysisResults.summary.highSeverity}</span>
+              <span className="medium">Medium: {analysisResults.summary.mediumSeverity}</span>
+              <span className="low">Low: {analysisResults.summary.lowSeverity}</span>
             </div>
           </div>
-
-          <div className="vulnerabilities">
-            <h3>Detected Vulnerabilities</h3>
-            {analysisResults.vulnerabilities.map((vuln, index) => (
-              <div key={index} className={`vulnerability-card ${vuln.severity}`}>
-                <div className="vulnerability-header">
-                  <span className="severity-badge">{vuln.severity}</span>
-                  <span className="file-location">{vuln.file}:{vuln.line}</span>
+          <div className="vulnerability-list">
+            <h3>Vulnerabilities</h3>
+            {analysisResults.files.map((file, fileIndex) => (
+              file.vulnerabilities.length > 0 && (
+                <div key={fileIndex} className="file-vulnerabilities">
+                  <h4>{file.path}</h4>
+                  {file.vulnerabilities.map((vuln, vulnIndex) => (
+                    <div key={vulnIndex} className={`vulnerability-item ${vuln.severity}`}>
+                      <h5>Line {vuln.line}:{vuln.column}</h5>
+                      <p>{vuln.description}</p>
+                      <p className="suggestion">{vuln.suggestion}</p>
+                    </div>
+                  ))}
                 </div>
-                <p className="description">{vuln.description}</p>
-                <pre className="code-snippet">
-                  <code>{vuln.code}</code>
-                </pre>
-              </div>
+              )
             ))}
           </div>
         </div>
