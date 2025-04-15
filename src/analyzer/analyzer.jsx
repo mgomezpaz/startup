@@ -4,6 +4,15 @@ import './analyzer.css';
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 const ALLOWED_FILE_TYPES = ['.zip', '.tar.gz', '.rar'];
 
+const validateGitHubUrl = (url) => {
+  if (!url) return null;
+  const githubUrlRegex = /^https:\/\/github\.com\/[a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+(\.git)?(\/)?$/;
+  if (!githubUrlRegex.test(url)) {
+    return 'Please enter a valid GitHub repository URL (e.g., https://github.com/owner/repo or https://github.com/owner/repo.git)';
+  }
+  return null;
+};
+
 export function Analyzer({ userName }) {
   const [file, setFile] = React.useState(null);
   const [repoUrl, setRepoUrl] = React.useState('');
@@ -175,6 +184,14 @@ export function Analyzer({ userName }) {
       return;
     }
 
+    if (repoUrl) {
+      const urlError = validateGitHubUrl(repoUrl);
+      if (urlError) {
+        setError(urlError);
+        return;
+      }
+    }
+
     try {
       await startAnalysis();
     } catch (error) {
@@ -221,27 +238,27 @@ export function Analyzer({ userName }) {
               className="form-control" 
               placeholder="https://github.com/user/repo"
               value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
+              onChange={(e) => {
+                setRepoUrl(e.target.value);
+                setError(null);
+              }}
             />
+            <small className="text-muted">
+              Enter a public GitHub repository URL (e.g., https://github.com/owner/repo or https://github.com/owner/repo.git)
+            </small>
           </div>
 
           <div className="upload-option">
-            <label htmlFor="notes">Additional Notes (Optional)</label>
+            <label htmlFor="notes">Notes (optional)</label>
             <textarea 
               id="notes" 
               className="form-control" 
               rows="3"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any specific concerns or areas to focus on?"
+              placeholder="Add any additional context about the code..."
             />
           </div>
-
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              {error}
-            </div>
-          )}
 
           <div className="upload-option">
             <button 
@@ -252,6 +269,12 @@ export function Analyzer({ userName }) {
               {isAnalyzing ? 'Analyzing...' : 'Analyze Code'}
             </button>
           </div>
+
+          {error && (
+            <div className="alert alert-danger mt-3">
+              {error}
+            </div>
+          )}
         </form>
       </div>
 
