@@ -7,6 +7,12 @@ const uuid = require('uuid');
 const fetch = require('node-fetch');
 const { OpenAI } = require('openai');
 const DB = require('./database.js');
+const rateLimit = require('express-rate-limit');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs/promises');
+const os = require('os');
+const { extract, scanDirectory } = require('./utils');
 
 // Custom error class for API errors
 class APIError extends Error {
@@ -38,7 +44,7 @@ const verifyAuth = async (req, res, next) => {
       throw new APIError('Authentication required', 401, 'AUTH_REQUIRED');
     }
 
-    const user = await findUser('token', token);
+    const user = await DB.getUserByToken(token);
     if (!user) {
       throw new APIError('Invalid or expired session', 401, 'INVALID_SESSION');
     }
@@ -79,8 +85,50 @@ apiRouter.get('/test', (_req, res) => {
   res.send({ msg: 'SecureCode service is running' });
 });
 
+// Set up rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  handler: (req, res) => {
+    res.status(429).json({
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many login attempts, please try again later'
+    });
+  }
+});
+
+// Apply rate limiter only to login endpoint
+apiRouter.use('/auth/login', authLimiter);
+
+// Security headers middleware
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Content-Security-Policy', "default-src 'self'");
+  next();
+});
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 25 * 1024 * 1024, // 25MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.zip', '.tar.gz', '.rar'];
+    const fileExtension = file.originalname.toLowerCase().match(/\.[^.]*$/)?.[0];
+    if (allowedTypes.includes(fileExtension)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only ZIP, TAR.GZ, and RAR files are allowed.'));
+    }
+  }
+});
+
 // Helper function to create a new user with a hashed password
-async function createUser(email, password) {
+async function createUser(email, password, role = 'user') {
   if (!email || !password) {
     throw new APIError('Email and password are required', 400, 'MISSING_CREDENTIALS');
   }
@@ -104,10 +152,32 @@ async function createUser(email, password) {
     email: email.toLowerCase(),
     password: passwordHash,
     token: uuid.v4(),
+    role: role,
+    createdAt: new Date(),
+    updatedAt: new Date()
   };
   await DB.addUser(user);
   return user;
 }
+
+// Middleware to check if a user has required role
+const checkRole = (requiredRole) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        throw new APIError('Authentication required', 401, 'AUTH_REQUIRED');
+      }
+
+      if (req.user.role !== requiredRole && req.user.role !== 'admin') {
+        throw new APIError('Insufficient permissions', 403, 'INSUFFICIENT_PERMISSIONS');
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
 
 // Helper function to find a user by any field (email, token, etc)
 async function findUser(field, value) {
@@ -127,19 +197,17 @@ function setAuthCookie(res, authToken) {
     secure: true,
     httpOnly: true,
     sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
   });
 }
 
 // CreateAuth - Register a new user
 apiRouter.post('/auth/register', async (req, res, next) => {
   try {
-    if (await findUser('email', req.body.email?.toLowerCase())) {
-      throw new APIError('User already exists', 409, 'USER_EXISTS');
-    }
-
-    const user = await createUser(req.body.email, req.body.password);
+    const { email, password } = req.body;
+    const user = await createUser(email, password);
     setAuthCookie(res, user.token);
-    res.status(201).json({ email: user.email });
+    res.json({ email: user.email, role: user.role });
   } catch (error) {
     next(error);
   }
@@ -148,24 +216,24 @@ apiRouter.post('/auth/register', async (req, res, next) => {
 // GetAuth - Login an existing user
 apiRouter.post('/auth/login', async (req, res, next) => {
   try {
-    if (!req.body.email || !req.body.password) {
-      throw new APIError('Email and password are required', 400, 'MISSING_CREDENTIALS');
-    }
-
-    const user = await findUser('email', req.body.email.toLowerCase());
+    const { email, password } = req.body;
+    const user = await findUser('email', email);
+    
     if (!user) {
-      throw new APIError('Invalid credentials', 401, 'INVALID_CREDENTIALS');
+      throw new APIError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
-    const validPassword = await bcrypt.compare(req.body.password, user.password);
+    const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      throw new APIError('Invalid credentials', 401, 'INVALID_CREDENTIALS');
+      throw new APIError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
+    // Update user's token
     user.token = uuid.v4();
     await DB.updateUser(user);
+
     setAuthCookie(res, user.token);
-    res.json({ email: user.email });
+    res.json({ email: user.email, role: user.role });
   } catch (error) {
     next(error);
   }
@@ -224,50 +292,154 @@ function generateMockAnalysisResult(files) {
   });
 }
 
-// Submit code for analysis
-apiRouter.post('/analyze', verifyAuth, async (req, res, next) => {
-  try {
-    const { files } = req.body;
-    
-    if (!files || !Array.isArray(files) || files.length === 0) {
-      throw new APIError('No files provided for analysis', 400, 'NO_FILES');
-    }
-    
-    let result;
-    try {
-      // In development, we'll just generate mock results to avoid OpenAI API costs
-      if (process.env.NODE_ENV === 'development') {
-        result = generateMockAnalysisResult(files);
-      } else {
-        // In production, use the OpenAI API
-        // Combine all code for analysis
-        const allCode = files.map(f => `File: ${f.name}\n\n${f.content}`).join('\n\n');
-        result = await analyzeCodeWithAI(allCode);
-      }
-      
-      // Create and store the analysis record
-      const analysis = {
-        userEmail: req.user.email,
-        date: new Date(),
-        files: files.map(f => f.name),
-        result: result
-      };
-      
-      const dbResult = await DB.addAnalysis(analysis);
-      analysis._id = dbResult.insertedId;
-      
-      res.json(analysis);
-    } catch (error) {
-      console.error('Analysis error:', error);
-      throw new APIError('Analysis failed', 500, 'ANALYSIS_FAILED');
-    }
-  } catch (error) {
-    next(error);
-  }
+// Set up OpenAI for our code analysis
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Get user's analysis history
-apiRouter.get('/history', verifyAuth, async (req, res, next) => {
+// Validate OpenAI configuration
+if (!process.env.OPENAI_API_KEY) {
+  console.warn('WARNING: OPENAI_API_KEY environment variable not set. Code analysis features will not work.');
+}
+
+// Main function to analyze code using OpenAI's API
+async function analyzeCodeWithAI(code) {
+  try {
+    console.log('Sending code to OpenAI for analysis...');
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are a cybersecurity expert. Analyze the provided code for security vulnerabilities.
+            Focus on:
+            1. SQL Injection
+            2. XSS (Cross-Site Scripting)
+            3. CSRF (Cross-Site Request Forgery)
+            4. Authentication/Authorization issues
+            5. Data validation issues
+            6. Insecure dependencies
+            7. Hardcoded secrets
+            8. Insecure file operations
+            9. Insecure API endpoints
+            10. Missing security headers
+            
+            Format your response as JSON with the following structure:
+            {
+              "vulnerabilities": [
+                {
+                  "type": "vulnerability type",
+                  "severity": "high/medium/low",
+                  "line": "line number or range",
+                  "description": "description of the issue",
+                  "suggestion": "how to fix it"
+                }
+              ]
+            }`
+        },
+        {
+          role: "user",
+          content: `Analyze this code for security vulnerabilities:\n\n${code}`
+        }
+      ],
+      temperature: 0.3, // Lower temperature for more consistent results
+      max_tokens: 1000
+    });
+
+    console.log('Received response from OpenAI');
+    try {
+      return JSON.parse(response.choices[0].message.content);
+    } catch (parseError) {
+      console.error('Error parsing OpenAI response:', parseError);
+      return {
+        vulnerabilities: [{
+          type: "Analysis Error",
+          severity: "info",
+          line: "N/A",
+          description: "Failed to parse analysis results",
+          suggestion: "Try analyzing again"
+        }]
+      };
+    }
+  } catch (error) {
+    console.error('Error in OpenAI analysis:', error);
+    throw error;
+  }
+}
+
+// Helper function to analyze code
+async function analyzeCode(files) {
+  console.log('Starting code analysis...');
+  console.log(`Number of files to analyze: ${files.length}`);
+  
+  const results = {
+    files: [],
+    summary: {
+      highSeverity: 0,
+      mediumSeverity: 0,
+      lowSeverity: 0
+    }
+  };
+
+  // Process files in batches for OpenAI analysis
+  console.log('\nStarting OpenAI analysis...');
+  try {
+    // Batch files for OpenAI analysis
+    const batchSize = 3; // Process 3 files at a time
+    for (let i = 0; i < files.length; i += batchSize) {
+      const batch = files.slice(i, i + batchSize);
+      console.log(`\nProcessing batch ${i/batchSize + 1} of ${Math.ceil(files.length/batchSize)}`);
+      
+      const batchPromises = batch.map(file => {
+        console.log(`Analyzing ${file.path} with OpenAI...`);
+        return analyzeCodeWithAI(file.content);
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      
+      // Process results
+      batch.forEach((file, index) => {
+        const aiAnalysis = batchResults[index];
+        console.log(`OpenAI found ${aiAnalysis.vulnerabilities?.length || 0} issues in ${file.path}`);
+
+        const fileResult = {
+          path: file.path,
+          vulnerabilities: []
+        };
+
+        if (aiAnalysis.vulnerabilities) {
+          fileResult.vulnerabilities.push(...aiAnalysis.vulnerabilities.map(vuln => ({
+            line: vuln.line,
+            column: 0, // OpenAI doesn't provide column numbers
+            description: vuln.description,
+            severity: vuln.severity.toLowerCase(),
+            suggestion: vuln.suggestion
+          })));
+
+          // Update summary counts
+          aiAnalysis.vulnerabilities.forEach(vuln => {
+            const severity = vuln.severity.toLowerCase();
+            if (severity === 'high') results.summary.highSeverity++;
+            else if (severity === 'medium') results.summary.mediumSeverity++;
+            else results.summary.lowSeverity++;
+          });
+        }
+
+        results.files.push(fileResult);
+      });
+    }
+  } catch (error) {
+    console.error('OpenAI analysis failed:', error);
+    throw error;
+  }
+
+  console.log('\nAnalysis completed');
+  console.log('Summary:', results.summary);
+  return results;
+}
+
+// Get analysis history
+apiRouter.get('/analysis/history', verifyAuth, async (req, res, next) => {
   try {
     const history = await DB.getAnalysisHistory(req.user.email);
     res.json(history);
@@ -276,26 +448,19 @@ apiRouter.get('/history', verifyAuth, async (req, res, next) => {
   }
 });
 
-// Get a specific analysis by ID
+// Get analysis details
 apiRouter.get('/analysis/:id', verifyAuth, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    
-    if (!id) {
-      throw new APIError('Analysis ID is required', 400, 'MISSING_ID');
-    }
-    
-    const analysis = await DB.getAnalysisById(id);
+    const analysis = await DB.getAnalysisById(req.params.id);
     
     if (!analysis) {
-      throw new APIError('Analysis not found', 404, 'NOT_FOUND');
+      throw new APIError('Analysis not found', 404, 'ANALYSIS_NOT_FOUND');
     }
-    
-    // Only allow users to access their own analyses
-    if (analysis.userEmail !== req.user.email) {
-      throw new APIError('Access denied', 403, 'ACCESS_DENIED');
+
+    if (analysis.userEmail !== req.user.email && req.user.role !== 'admin') {
+      throw new APIError('Unauthorized', 403, 'UNAUTHORIZED');
     }
-    
+
     res.json(analysis);
   } catch (error) {
     next(error);
@@ -493,56 +658,6 @@ function generateHTMLReport(analysis) {
   return html;
 }
 
-// Set up OpenAI for our code analysis
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Validate OpenAI configuration
-if (!process.env.OPENAI_API_KEY) {
-  console.warn('WARNING: OPENAI_API_KEY environment variable not set. Code analysis features will not work.');
-}
-
-// Main function to analyze code using OpenAI's API
-async function analyzeCodeWithAI(code) {
-  try {
-    // Ask OpenAI to analyze our code for security issues
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are a cybersecurity expert. Analyze the provided code for security vulnerabilities. Format your response as JSON with the following structure: {\"vulnerabilities\": [{\"type\": \"vulnerability type\", \"severity\": \"high/medium/low\", \"line\": \"line number or range\", \"description\": \"description of the issue\", \"suggestion\": \"how to fix it\"}]}"
-        },
-        {
-          role: "user",
-          content: `Analyze this code for security vulnerabilities:\n\n${code}`
-        }
-      ],
-      temperature: 0.7,
-    });
-
-    // Try to parse OpenAI's response as JSON
-    try {
-      return JSON.parse(response.choices[0].message.content);
-    } catch (parseError) {
-      // If parsing fails, wrap the raw response in our expected format
-      return {
-        vulnerabilities: [{
-          type: "Analysis Result",
-          severity: "info",
-          line: "N/A",
-          description: response.choices[0].message.content,
-          suggestion: "See description for details"
-        }]
-      };
-    }
-  } catch (error) {
-    console.error('Error analyzing code with OpenAI:', error);
-    throw error;
-  }
-}
-
 // Endpoint to analyze a code snippet
 apiRouter.post('/analyze-code', async (req, res, next) => {
   try {
@@ -561,19 +676,106 @@ apiRouter.post('/analyze-code', async (req, res, next) => {
 });
 
 // Add analyze endpoint
-apiRouter.get('/analyze', verifyAuth, async (req, res, next) => {
+apiRouter.post('/analyze', verifyAuth, upload.single('file'), async (req, res, next) => {
   try {
-    res.json({ message: 'Protected analyze endpoint accessed successfully' });
+    if (!req.file) {
+      throw new APIError('No file uploaded', 400, 'NO_FILE');
+    }
+
+    console.log(`Processing uploaded file: ${req.file.originalname}`);
+    
+    // Create a temporary directory for the uploaded file
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'securecode-'));
+    console.log(`Created temp directory: ${tempDir}`);
+    
+    const filePath = path.join(tempDir, req.file.originalname);
+    await fs.writeFile(filePath, req.file.buffer);
+    console.log(`Wrote file to: ${filePath}`);
+    
+    // Extract the archive
+    console.log('Extracting archive...');
+    await extract(filePath, { dir: tempDir });
+    console.log('Archive extracted successfully');
+    
+    // Find all code files
+    const files = [];
+    console.log(`Scanning directory: ${tempDir}`);
+    await scanDirectory(tempDir, files);
+    console.log(`Found files to analyze: ${files.length}`);
+    
+    // Clean up the temporary directory
+    await fs.rm(tempDir, { recursive: true, force: true });
+    console.log('Cleaned up temp directory');
+    
+    if (files.length === 0) {
+      throw new APIError('No code files found in the uploaded archive', 400, 'NO_CODE_FILES');
+    }
+
+    // Create a new analysis record
+    const analysis = {
+      id: uuid.v4(),
+      userEmail: req.user.email,
+      status: 'pending',
+      date: new Date(),
+      files: files.map(f => f.path)
+    };
+
+    console.log('Created analysis record with ID:', analysis.id);
+
+    // Save the analysis record
+    const insertedId = await DB.addAnalysis(analysis);
+    console.log('Analysis saved to database with ID:', analysis.id, 'MongoDB ID:', insertedId);
+    
+    // Start the analysis in the background
+    analyzeCode(files).then(async (result) => {
+      console.log('Analysis completed for ID:', analysis.id);
+      await DB.updateAnalysisResults(analysis.id, result, 'completed');
+    }).catch(async (error) => {
+      console.error('Analysis failed for ID:', analysis.id, error);
+      await DB.updateAnalysisStatus(analysis.id, 'failed', error.message);
+    });
+
+    // Return the analysis ID immediately
+    const response = { 
+      id: analysis.id,
+      status: analysis.status,
+      message: 'Analysis started successfully'
+    };
+    console.log('Sending response:', response);
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error in analyze endpoint:', error);
+    next(error);
+  }
+});
+
+// Admin-only endpoint example
+apiRouter.get('/admin/users', verifyAuth, checkRole('admin'), async (req, res, next) => {
+  try {
+    const users = await DB.getAllUsers();
+    res.json(users.map(user => ({
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt
+    })));
   } catch (error) {
     next(error);
   }
 });
 
-// Get analysis history for the authenticated user
-apiRouter.get('/analyze/history', verifyAuth, async (req, res, next) => {
+// Admin-only endpoint for updating user roles
+apiRouter.put('/admin/users/:email/role', verifyAuth, checkRole('admin'), async (req, res, next) => {
   try {
-    const history = await DB.getAnalysisHistory(req.user.email);
-    res.json(history);
+    const { email } = req.params;
+    const { role } = req.body;
+
+    if (!['user', 'admin'].includes(role)) {
+      throw new APIError('Invalid role', 400, 'INVALID_ROLE');
+    }
+
+    await DB.updateUserRole(email, role);
+    res.status(200).json({ message: 'User role updated successfully' });
   } catch (error) {
     next(error);
   }
