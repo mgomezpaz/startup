@@ -1,33 +1,35 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import './history.css';
 
 export function History({ userName }) {
   const [analysisHistory, setAnalysisHistory] = React.useState([]);
   const [selectedAnalysis, setSelectedAnalysis] = React.useState(null);
   const [sortConfig, setSortConfig] = React.useState({ key: 'date', direction: 'desc' });
-  const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
 
-  // Fetch real analysis history from the backend
-  React.useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const response = await fetch('/api/analyze/history');
-        if (!response.ok) {
-          throw new Error('Failed to fetch analysis history');
-        }
-        const data = await response.json();
-        setAnalysisHistory(data);
-      } catch (err) {
-        setError(err.message);
-        console.error('Error fetching analysis history:', err);
-      } finally {
-        setLoading(false);
+  useEffect(() => {
+    fetchAnalysisHistory();
+  }, []);
+
+  const fetchAnalysisHistory = async () => {
+    try {
+      const response = await fetch('/api/analysis/history', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch analysis history');
       }
-    };
 
-    fetchHistory();
-  }, [userName]); // Refetch when userName changes
+      const data = await response.json();
+      setAnalysisHistory(data);
+      setLoading(false);
+    } catch (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  };
 
   const handleSort = (key) => {
     setSortConfig(prevConfig => ({
@@ -43,8 +45,8 @@ export function History({ userName }) {
     const sorted = [...analysisHistory];
     sorted.sort((a, b) => {
       if (sortConfig.key === 'vulnerabilities') {
-        const totalA = a.vulnerabilities.high + a.vulnerabilities.medium + a.vulnerabilities.low;
-        const totalB = b.vulnerabilities.high + b.vulnerabilities.medium + b.vulnerabilities.low;
+        const totalA = a.results?.summary?.highSeverity + a.results?.summary?.mediumSeverity + a.results?.summary?.lowSeverity || 0;
+        const totalB = b.results?.summary?.highSeverity + b.results?.summary?.mediumSeverity + b.results?.summary?.lowSeverity || 0;
         return sortConfig.direction === 'asc' ? totalA - totalB : totalB - totalA;
       }
       
@@ -71,16 +73,26 @@ export function History({ userName }) {
     });
   };
 
-  const getTotalVulnerabilities = (vulns) => {
-    return vulns.high + vulns.medium + vulns.low;
+  const getTotalVulnerabilities = (results) => {
+    if (!results?.summary) return 0;
+    return results.summary.highSeverity + results.summary.mediumSeverity + results.summary.lowSeverity;
   };
 
-  const getSeverityClass = (vulns) => {
-    if (vulns.high > 0) return 'high';
-    if (vulns.medium > 0) return 'medium';
-    if (vulns.low > 0) return 'low';
+  const getSeverityClass = (results) => {
+    if (!results?.summary) return 'none';
+    if (results.summary.highSeverity > 0) return 'high';
+    if (results.summary.mediumSeverity > 0) return 'medium';
+    if (results.summary.lowSeverity > 0) return 'low';
     return 'none';
   };
+
+  if (loading) {
+    return <div className="history-container">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="history-container error">{error}</div>;
+  }
 
   return (
     <main className="history-container">
@@ -123,22 +135,22 @@ export function History({ userName }) {
             </thead>
             <tbody>
               {sortedHistory.map((analysis) => (
-                <tr key={analysis.id}>
-                  <td>{analysis.id}</td>
-                  <td>{analysis.projectName}</td>
+                <tr key={analysis._id}>
+                  <td>{analysis._id}</td>
+                  <td>{analysis.files?.[0]?.path || analysis.repoUrl || 'Unknown'}</td>
                   <td>{formatDate(analysis.date)}</td>
-                  <td className={`vulnerabilities ${getSeverityClass(analysis.vulnerabilities)}`}>
+                  <td className={`vulnerabilities ${getSeverityClass(analysis.results)}`}>
                     <div className="vulnerability-summary">
-                      {getTotalVulnerabilities(analysis.vulnerabilities)}
+                      {getTotalVulnerabilities(analysis.results)}
                       <span className="vulnerability-breakdown">
-                        {analysis.vulnerabilities.high > 0 && (
-                          <span className="high">{analysis.vulnerabilities.high}H</span>
+                        {analysis.results?.summary?.highSeverity > 0 && (
+                          <span className="high">{analysis.results.summary.highSeverity}H</span>
                         )}
-                        {analysis.vulnerabilities.medium > 0 && (
-                          <span className="medium">{analysis.vulnerabilities.medium}M</span>
+                        {analysis.results?.summary?.mediumSeverity > 0 && (
+                          <span className="medium">{analysis.results.summary.mediumSeverity}M</span>
                         )}
-                        {analysis.vulnerabilities.low > 0 && (
-                          <span className="low">{analysis.vulnerabilities.low}L</span>
+                        {analysis.results?.summary?.lowSeverity > 0 && (
+                          <span className="low">{analysis.results.summary.lowSeverity}L</span>
                         )}
                       </span>
                     </div>
@@ -159,52 +171,38 @@ export function History({ userName }) {
 
         {selectedAnalysis && (
           <div className="analysis-details">
-            <div className="details-header">
-              <h3>Analysis Details - {selectedAnalysis.projectName}</h3>
-              <button 
-                className="btn btn-sm btn-secondary"
-                onClick={() => setSelectedAnalysis(null)}
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="summary-box">
-              <h4>Summary</h4>
-              <div className="severity-counts">
-                <div className="severity high">
-                  <span className="count">{selectedAnalysis.vulnerabilities.high}</span>
-                  <span className="label">High</span>
-                </div>
-                <div className="severity medium">
-                  <span className="count">{selectedAnalysis.vulnerabilities.medium}</span>
-                  <span className="label">Medium</span>
-                </div>
-                <div className="severity low">
-                  <span className="count">{selectedAnalysis.vulnerabilities.low}</span>
-                  <span className="label">Low</span>
-                </div>
+            <h3>Analysis Details</h3>
+            <div className="details-content">
+              <div className="detail-item">
+                <strong>Project:</strong> {selectedAnalysis.files?.[0]?.path || selectedAnalysis.repoUrl || 'Unknown'}
               </div>
-            </div>
-
-            <div className="vulnerabilities-list">
-              <h4>Detected Vulnerabilities</h4>
-              {selectedAnalysis.results.vulnerabilities.map((vuln, index) => (
-                <div key={index} className={`vulnerability-card ${vuln.severity}`}>
-                  <div className="vulnerability-header">
-                    <span className="severity-badge">{vuln.severity}</span>
-                    <span className="file-location">{vuln.file}:{vuln.line}</span>
+              <div className="detail-item">
+                <strong>Date:</strong> {formatDate(selectedAnalysis.date)}
+              </div>
+              <div className="detail-item">
+                <strong>Status:</strong> {selectedAnalysis.status}
+              </div>
+              {selectedAnalysis.results?.files?.map((file, fileIndex) => (
+                file.vulnerabilities.length > 0 && (
+                  <div key={fileIndex} className="file-vulnerabilities">
+                    <h4>{file.path}</h4>
+                    {file.vulnerabilities.map((vuln, vulnIndex) => (
+                      <div key={vulnIndex} className={`vulnerability-item ${vuln.severity}`}>
+                        <h5>Line {vuln.line}:{vuln.column}</h5>
+                        <p>{vuln.description}</p>
+                        <p className="suggestion">{vuln.suggestion}</p>
+                      </div>
+                    ))}
                   </div>
-                  <p className="description">{vuln.description}</p>
-                  <pre className="code-snippet">
-                    <code>{vuln.code}</code>
-                  </pre>
-                </div>
+                )
               ))}
-              {selectedAnalysis.results.vulnerabilities.length === 0 && (
-                <p className="no-vulnerabilities">No vulnerabilities detected</p>
-              )}
             </div>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setSelectedAnalysis(null)}
+            >
+              Close
+            </button>
           </div>
         )}
       </div>
