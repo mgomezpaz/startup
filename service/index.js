@@ -71,8 +71,8 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// Set up the port - use command line arg if provided, otherwise default to 3000
-const port = process.argv.length > 2 ? process.argv[2] : 3000;
+// Set up the port - use environment variable or default to 3000
+const port = process.env.PORT || 3000;
 const authCookieName = 'securecode_token';
 
 // We'll store users and analyses in memory for now
@@ -879,8 +879,11 @@ apiRouter.put('/admin/users/:email/role', verifyAuth, checkRole('admin'), async 
   }
 });
 
-// Mount routes in the correct order
-app.use('/api', apiRouter);  // API routes first
+// Serve static files first
+app.use(express.static('public'));
+
+// API routes after static files
+app.use('/api', apiRouter);
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
@@ -912,14 +915,9 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// Serve static files for non-API routes
-app.use(express.static('public'));
-
-// Catch-all route for the frontend
-app.use((req, res) => {
-  if (!req.path.startsWith('/api/')) {
-    res.sendFile('index.html', { root: 'public' });
-  }
+// Catch-all route for the frontend - should be last
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start the server!
