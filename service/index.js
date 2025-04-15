@@ -15,6 +15,7 @@ const os = require('os');
 const { extract, scanDirectory } = require('./utils');
 const axios = require('axios');
 const { Octokit } = require('@octokit/rest');
+const { peerProxy } = require('./peerProxy.js');
 
 // Custom error class for API errors
 class APIError extends Error {
@@ -922,6 +923,9 @@ app.use((req, res) => {
 });
 
 // Start the server!
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`SecureCode service listening on port ${port}`);
 });
+
+// Initialize WebSocket server
+peerProxy(server);
