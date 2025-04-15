@@ -13,6 +13,8 @@ const path = require('path');
 const fs = require('fs/promises');
 const os = require('os');
 const { extract, scanDirectory } = require('./utils');
+const axios = require('axios');
+const { Octokit } = require('@octokit/rest');
 
 // Custom error class for API errors
 class APIError extends Error {
@@ -675,50 +677,145 @@ apiRouter.post('/analyze-code', async (req, res, next) => {
   }
 });
 
-// Add analyze endpoint
+// Add GitHub URL validation function
+function validateGitHubUrl(url) {
+  const githubUrlRegex = /^https:\/\/github\.com\/[a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+(\.git)?(\/)?$/;
+  return githubUrlRegex.test(url);
+}
+
+// Add GitHub repository download function
+async function downloadGitHubRepo(repoUrl) {
+  try {
+    // Remove .git suffix if present
+    const cleanUrl = repoUrl.replace(/\.git$/, '');
+    
+    // Extract owner and repo from URL
+    const [owner, repo] = cleanUrl.split('/').slice(-2);
+    
+    // Create Octokit instance
+    const octokit = new Octokit();
+    
+    // Get repository info
+    const repoInfo = await octokit.repos.get({
+      owner,
+      repo
+    });
+    
+    // Check repository size
+    if (repoInfo.data.size > 100 * 1024 * 1024) { // 100MB limit
+      throw new Error('Repository size exceeds 100MB limit');
+    }
+    
+    // Download repository as ZIP
+    const response = await axios({
+      method: 'get',
+      url: `https://api.github.com/repos/${owner}/${repo}/zipball`,
+      responseType: 'arraybuffer',
+      headers: {
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    return {
+      buffer: response.data,
+      filename: `${owner}-${repo}.zip`
+    };
+  } catch (error) {
+    console.error('Error downloading GitHub repository:', error);
+    throw new Error('Failed to download GitHub repository');
+  }
+}
+
+// Modify the analyze endpoint
 apiRouter.post('/analyze', verifyAuth, upload.single('file'), async (req, res, next) => {
   try {
-    if (!req.file) {
-      throw new APIError('No file uploaded', 400, 'NO_FILE');
+    let files = [];
+    let analysis = null;
+
+    // Handle GitHub URL if provided
+    if (req.body.repoUrl) {
+      if (!validateGitHubUrl(req.body.repoUrl)) {
+        throw new APIError('Invalid GitHub URL format', 400, 'INVALID_GITHUB_URL');
+      }
+
+      console.log(`Processing GitHub repository: ${req.body.repoUrl}`);
+      
+      // Download repository
+      const repoData = await downloadGitHubRepo(req.body.repoUrl);
+      
+      // Create a temporary directory for the downloaded repository
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'securecode-'));
+      console.log(`Created temp directory: ${tempDir}`);
+      
+      const filePath = path.join(tempDir, repoData.filename);
+      await fs.writeFile(filePath, repoData.buffer);
+      console.log(`Wrote repository to: ${filePath}`);
+      
+      // Extract the archive
+      console.log('Extracting repository...');
+      await extract(filePath, { dir: tempDir });
+      console.log('Repository extracted successfully');
+      
+      // Find all code files
+      console.log(`Scanning directory: ${tempDir}`);
+      await scanDirectory(tempDir, files);
+      console.log(`Found files to analyze: ${files.length}`);
+      
+      // Clean up the temporary directory
+      await fs.rm(tempDir, { recursive: true, force: true });
+      console.log('Cleaned up temp directory');
+
+      // Create analysis record
+      analysis = {
+        id: uuid.v4(),
+        userEmail: req.user.email,
+        status: 'pending',
+        date: new Date(),
+        repoUrl: req.body.repoUrl,
+        files: files.map(f => f.path)
+      };
+    } 
+    // Handle file upload if provided
+    else if (req.file) {
+      console.log(`Processing uploaded file: ${req.file.originalname}`);
+      
+      // Create a temporary directory for the uploaded file
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'securecode-'));
+      console.log(`Created temp directory: ${tempDir}`);
+      
+      const filePath = path.join(tempDir, req.file.originalname);
+      await fs.writeFile(filePath, req.file.buffer);
+      console.log(`Wrote file to: ${filePath}`);
+      
+      // Extract the archive
+      console.log('Extracting archive...');
+      await extract(filePath, { dir: tempDir });
+      console.log('Archive extracted successfully');
+      
+      // Find all code files
+      console.log(`Scanning directory: ${tempDir}`);
+      await scanDirectory(tempDir, files);
+      console.log(`Found files to analyze: ${files.length}`);
+      
+      // Clean up the temporary directory
+      await fs.rm(tempDir, { recursive: true, force: true });
+      console.log('Cleaned up temp directory');
+
+      // Create analysis record
+      analysis = {
+        id: uuid.v4(),
+        userEmail: req.user.email,
+        status: 'pending',
+        date: new Date(),
+        files: files.map(f => f.path)
+      };
+    } else {
+      throw new APIError('No file or repository URL provided', 400, 'NO_INPUT');
     }
 
-    console.log(`Processing uploaded file: ${req.file.originalname}`);
-    
-    // Create a temporary directory for the uploaded file
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'securecode-'));
-    console.log(`Created temp directory: ${tempDir}`);
-    
-    const filePath = path.join(tempDir, req.file.originalname);
-    await fs.writeFile(filePath, req.file.buffer);
-    console.log(`Wrote file to: ${filePath}`);
-    
-    // Extract the archive
-    console.log('Extracting archive...');
-    await extract(filePath, { dir: tempDir });
-    console.log('Archive extracted successfully');
-    
-    // Find all code files
-    const files = [];
-    console.log(`Scanning directory: ${tempDir}`);
-    await scanDirectory(tempDir, files);
-    console.log(`Found files to analyze: ${files.length}`);
-    
-    // Clean up the temporary directory
-    await fs.rm(tempDir, { recursive: true, force: true });
-    console.log('Cleaned up temp directory');
-    
     if (files.length === 0) {
-      throw new APIError('No code files found in the uploaded archive', 400, 'NO_CODE_FILES');
+      throw new APIError('No code files found', 400, 'NO_CODE_FILES');
     }
-
-    // Create a new analysis record
-    const analysis = {
-      id: uuid.v4(),
-      userEmail: req.user.email,
-      status: 'pending',
-      date: new Date(),
-      files: files.map(f => f.path)
-    };
 
     console.log('Created analysis record with ID:', analysis.id);
 
