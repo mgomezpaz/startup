@@ -42,7 +42,17 @@ export default function Register({ onAuthChange }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (error) {
+        // If we can't parse JSON, it might be a rate limit error
+        if (response.status === 429) {
+          setError('Too many registration attempts. Please try again later.');
+          return;
+        }
+        throw new Error('Failed to parse server response');
+      }
 
       if (!response.ok) {
         throw new Error(data.message || 'Registration failed');
