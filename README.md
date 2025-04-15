@@ -137,11 +137,11 @@ For this deliverable I did the following. I checked the box `[x]` and added a de
 
 For this deliverable I did the following. I checked the box `[x]` and added a description for things I completed.
 
-- [x] **User registration** - Implemented a secure registration system with email validation, password hashing, and duplicate email checking. Users can create accounts through the registration form.
-- [x] **User login and logout** - Added secure login functionality with token-based authentication and proper session management. Users can log in and out securely.
-- [x] **Stores data in MongoDB** - Implemented MongoDB integration for storing user data and analysis history. All data is properly persisted in the database.
-- [x] **Stores credentials in MongoDB** - Securely stores user credentials with proper password hashing using bcrypt. No plain text passwords are stored.
-- [x] **Restricts functionality based on authentication** - Added protected routes and authentication checks. Only authenticated users can access the analyzer and history features.
+- [X] **User registration** - Implemented a secure registration system with email validation, password hashing, and duplicate email checking. Users can create accounts through the registration form.
+- [X] **User login and logout** - Added secure login functionality with token-based authentication and proper session management. Users can log in and out securely.
+- [X] **Stores data in MongoDB** - Implemented MongoDB integration for storing user data and analysis history. All data is properly persisted in the database.
+- [X] **Stores credentials in MongoDB** - Securely stores user credentials with proper password hashing using bcrypt. No plain text passwords are stored.
+- [X] **Restricts functionality based on authentication** - Added protected routes and authentication checks. Only authenticated users can access the analyzer and history features.
 
 ## 🚀 WebSocket deliverable
 
