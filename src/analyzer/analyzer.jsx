@@ -295,6 +295,27 @@ export function Analyzer({ userName }) {
       {analysisResults && (
         <div className="analysis-results">
           <h2>Analysis Results</h2>
+          
+          <div className="analysis-details">
+            <div className="detail-item">
+              <label>Project:</label>
+              <span>{analysisResults.projectName || (file?.name || repoUrl || 'Unknown')}</span>
+            </div>
+            <div className="detail-item">
+              <label>Date:</label>
+              <span>{analysisResults.timestamp || new Date().toLocaleString()}</span>
+            </div>
+            <div className="detail-item">
+              <label>Status:</label>
+              <span>{analysisResults.status || 'completed'}</span>
+            </div>
+          </div>
+          
+          <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+            <span style={{ fontSize: '1.2rem' }}>
+              {analysisResults.summary.highSeverity + analysisResults.summary.mediumSeverity + analysisResults.summary.lowSeverity} Issues
+            </span>
+          </div>
           <div className="vulnerability-summary">
             <h3>Summary</h3>
             <div className="severity-counts">
@@ -310,15 +331,20 @@ export function Analyzer({ userName }) {
                 <div key={fileIndex} className="file-vulnerabilities">
                   <h4>{file.path}</h4>
                   {file.vulnerabilities.map((vuln, vulnIndex) => (
-                    <div key={vulnIndex} className={`vulnerability-item ${vuln.severity}`}>
-                      <h5>Line {vuln.line}:{vuln.column}</h5>
-                      <p>{vuln.description}</p>
-                      <p className="suggestion">{vuln.suggestion}</p>
+                    <div key={vulnIndex} className={`vulnerability-item ${vuln.severity.toLowerCase()}`}>
+                      <h5>Line {vuln.line}:{vuln.column || "0"}</h5>
+                      <p className="vulnerability-description">{vuln.description}</p>
+                      <p className="vulnerability-suggestion">{vuln.suggestion}</p>
                     </div>
                   ))}
                 </div>
               )
             ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
+            <button className="btn-high">{analysisResults.summary.highSeverity}H</button>
+            <button className="btn-medium">{analysisResults.summary.mediumSeverity}M</button>
+            <button className="btn-low">{analysisResults.summary.lowSeverity}L</button>
           </div>
         </div>
       )}

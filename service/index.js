@@ -1,4 +1,5 @@
-require('dotenv').config();
+// Load environment variables first
+require('dotenv').config({ path: __dirname + '/.env' });
 
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -16,6 +17,9 @@ const { extract, scanDirectory } = require('./utils');
 const axios = require('axios');
 const { Octokit } = require('@octokit/rest');
 const { peerProxy } = require('./peerProxy.js');
+
+// Load configuration from config.json
+const config = require('./config.json');
 
 // Custom error class for API errors
 class APIError extends Error {
@@ -71,8 +75,8 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// Set up the port - use environment variable or default to 3000
-const port = process.env.PORT || 3000;
+// Set up the port - use environment variable or default to 4000
+const port = process.env.PORT || 4000;
 const authCookieName = 'securecode_token';
 
 // We'll store users and analyses in memory for now
@@ -207,11 +211,46 @@ function setAuthCookie(res, authToken) {
 // CreateAuth - Register a new user
 apiRouter.post('/auth/register', async (req, res, next) => {
   try {
+    console.log('Registration attempt:', req.body);
     const { email, password } = req.body;
-    const user = await createUser(email, password);
+    
+    if (!email || !password) {
+      throw new APIError('Email and password are required', 400, 'MISSING_FIELDS');
+    }
+
+    if (password.length < 8) {
+      throw new APIError('Password must be at least 8 characters', 400, 'WEAK_PASSWORD');
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    console.log('Password hashed successfully');
+
+    // Create user object
+    const user = {
+      email,
+      password: hashedPassword,
+      token: uuid.v4(),
+      role: 'user',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    console.log('User object created:', { email: user.email, role: user.role });
+
+    // Add user to database
+    const result = await DB.addUser(user);
+    console.log('User added to database:', result);
+
+    // Set auth cookie
     setAuthCookie(res, user.token);
-    res.json({ email: user.email, role: user.role });
+    
+    res.status(201).json({
+      email: user.email,
+      role: user.role
+    });
   } catch (error) {
+    console.error('Registration error:', error);
+    console.error('Stack trace:', error.stack);
     next(error);
   }
 });
@@ -297,12 +336,12 @@ function generateMockAnalysisResult(files) {
 
 // Set up OpenAI for our code analysis
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: config.openai.apiKey,
 });
 
 // Validate OpenAI configuration
-if (!process.env.OPENAI_API_KEY) {
-  console.warn('WARNING: OPENAI_API_KEY environment variable not set. Code analysis features will not work.');
+if (!config.openai.apiKey) {
+  console.warn('WARNING: OpenAI API key not found in config.json. Code analysis features will not work.');
 }
 
 // Main function to analyze code using OpenAI's API

@@ -10,6 +10,7 @@ export default function Register({ onAuthChange }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -33,9 +34,17 @@ export default function Register({ onAuthChange }) {
       return;
     }
 
+    setIsLoading(true);
+
     try {
+      // Check network connectivity
+      if (!navigator.onLine) {
+        throw new Error('No internet connection. Please check your network.');
+      }
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
+        credentials: 'include', // Important for cookies
         headers: {
           'Content-Type': 'application/json',
         },
@@ -48,23 +57,28 @@ export default function Register({ onAuthChange }) {
       } catch (error) {
         // If we can't parse JSON, it might be a rate limit error
         if (response.status === 429) {
-          setError('Too many registration attempts. Please try again later.');
-          return;
+          throw new Error('Too many registration attempts. Please try again later.');
         }
-        throw new Error('Failed to parse server response');
+        throw new Error('Failed to parse server response. Please try again.');
       }
 
       if (!response.ok) {
         throw new Error(data.message || 'Registration failed');
       }
 
-      setSuccess('Registration successful! Redirecting to login...');
+      setSuccess('Registration successful! Redirecting to analyzer...');
+      
+      // Store in localStorage
+      localStorage.setItem('userName', email);
+      
       setTimeout(() => {
-        onAuthChange(email, AuthState.Authenticated);
+        onAuthChange(email, AuthState.Authenticated, data.role);
         navigate('/analyzer');
       }, 2000);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -90,6 +104,7 @@ export default function Register({ onAuthChange }) {
               placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
               required
             />
           </div>
@@ -100,6 +115,7 @@ export default function Register({ onAuthChange }) {
               placeholder="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
               required
             />
           </div>
@@ -110,15 +126,23 @@ export default function Register({ onAuthChange }) {
               placeholder="confirm password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isLoading}
               required
             />
           </div>
           <div className="button-group">
-            <button type="submit" className="btn btn-primary">Register</button>
+            <button 
+              type="submit" 
+              className="btn btn-primary"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Registering...' : 'Register'}
+            </button>
             <button
               type="button"
               className="btn btn-secondary"
               onClick={() => navigate('/')}
+              disabled={isLoading}
             >
               Back to Login
             </button>

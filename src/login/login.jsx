@@ -7,6 +7,7 @@ export function Login({ userName, authState, onAuthChange }) {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [displayError, setDisplayError] = React.useState(null);
+  const [isLoading, setIsLoading] = React.useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -16,9 +17,18 @@ export function Login({ userName, authState, onAuthChange }) {
       return;
     }
 
+    setIsLoading(true);
+    setDisplayError(null);
+
     try {
+      // Check network connectivity first
+      if (!navigator.onLine) {
+        throw new Error('No internet connection. Please check your network.');
+      }
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'include', // Important for cookies
         headers: {
           'Content-Type': 'application/json',
         },
@@ -31,10 +41,9 @@ export function Login({ userName, authState, onAuthChange }) {
       } catch (error) {
         // If we can't parse JSON, it might be a rate limit error
         if (response.status === 429) {
-          setDisplayError('Too many login attempts. Please try again later.');
-          return;
+          throw new Error('Too many login attempts. Please try again later.');
         }
-        throw new Error('Failed to parse server response');
+        throw new Error('Failed to parse server response. Please try again.');
       }
 
       if (!response.ok) {
@@ -45,7 +54,7 @@ export function Login({ userName, authState, onAuthChange }) {
       localStorage.setItem('userName', email);
       
       // Update auth state
-      onAuthChange(email, AuthState.Authenticated);
+      onAuthChange(email, AuthState.Authenticated, data.role);
       
       setDisplayError(null);
       
@@ -53,6 +62,8 @@ export function Login({ userName, authState, onAuthChange }) {
       navigate('/analyzer');
     } catch (error) {
       setDisplayError(error.message || 'Failed to login. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

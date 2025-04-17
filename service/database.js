@@ -22,6 +22,7 @@ async function createIndexes() {
     console.log('Indexes created successfully');
   } catch (error) {
     console.error('Error creating indexes:', error);
+    console.error('Stack trace:', error.stack);
     // Don't throw here, we can still work without indexes
   }
 }
@@ -33,25 +34,47 @@ async function createIndexes() {
     console.log(`Connected to database`);
     await createIndexes();
   } catch (ex) {
-    console.log(`Unable to connect to database with ${url} because ${ex.message}`);
+    console.error(`Unable to connect to database with ${url}`);
+    console.error('Error details:', ex.message);
+    console.error('Stack trace:', ex.stack);
     process.exit(1);
   }
 })();
 
 // User stuff
-function getUser(email) {
-  return userCollection.findOne({ email: email });
+async function getUser(email) {
+  try {
+    return await userCollection.findOne({ email: email });
+  } catch (error) {
+    console.error('Error in getUser:', error);
+    console.error('Stack trace:', error.stack);
+    throw error;
+  }
 }
 
-function getUserByToken(token) {
-  return userCollection.findOne({ token: token });
+async function getUserByToken(token) {
+  try {
+    return await userCollection.findOne({ token: token });
+  } catch (error) {
+    console.error('Error in getUserByToken:', error);
+    console.error('Stack trace:', error.stack);
+    throw error;
+  }
 }
 
 async function addUser(user) {
-  // Add some metadata
-  user.createdAt = new Date();
-  user.updatedAt = new Date();
-  await userCollection.insertOne(user);
+  try {
+    const result = await userCollection.insertOne(user);
+    console.log('User added successfully:', result.insertedId);
+    return result;
+  } catch (error) {
+    console.error('Error in addUser:', error);
+    console.error('Stack trace:', error.stack);
+    if (error.code === 11000) {
+      throw new Error('Email already exists');
+    }
+    throw error;
+  }
 }
 
 async function updateUser(user) {
